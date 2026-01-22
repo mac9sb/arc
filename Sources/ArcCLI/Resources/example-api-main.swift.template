@@ -1,0 +1,14 @@
+import Foundation
+import Hummingbird
+import Logging
+
+@main
+struct ExampleAPI {
+    static func main() async throws {
+        let logger = Logger(label: "com.example.api")
+
+        // Build and run the application
+        let app = try await buildApplication(logger: logger)
+        try await app.runService()
+    }
+}

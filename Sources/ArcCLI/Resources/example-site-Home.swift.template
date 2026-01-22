@@ -1,0 +1,19 @@
+import Foundation
+import WebUI
+
+struct Home: Document {
+    var metadata: Metadata {
+        Metadata(from: Application.baseMetadata)
+    }
+
+    var path: String? { "index" }
+
+    var body: some Markup {
+        Main {
+            Heading(.h1, "Welcome to Example Site")
+            Text("This is an example static site built with WebUI.")
+            Text("Build it with: swift run ExampleSite")
+        }
+        .padding(of: 16)
+    }
+}

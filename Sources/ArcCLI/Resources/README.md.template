@@ -1,0 +1,49 @@
+# {{PROJECT_NAME}}
+
+An arc project with example applications.
+
+## Project Structure
+
+- `apps/example-api/` - Example Hummingbird API application with WebUI
+- `static/example-site/` - Example static site built with WebUI
+- `config.pkl` - Arc server configuration
+
+## Getting Started
+
+### 1. Build the Example API
+
+```bash
+cd apps/example-api
+swift build -c release
+```
+
+### 2. Build the Example Static Site
+
+```bash
+cd static/example-site
+swift run ExampleSite
+```
+
+This will generate the static site in the `.output` directory.
+
+### 3. Start the Arc Server
+
+```bash
+arc run
+```
+
+The server will start on port 8080 and proxy requests to:
+- `example-api.localhost:8080` -> Example API (port 8000)
+- `example-site.localhost:8080` -> Example static site
+
+## Configuration
+
+Edit `config.pkl` to add or modify sites. See `pkl/ArcConfiguration.pkl` for the configuration schema.
+
+## Development
+
+- Use `arc run` to start the server in foreground mode
+- Use `arc run --background` to start in background mode
+- Use `arc status` to check running processes and site health
+- Use `arc logs` to view logs
+- Use `arc stop` to stop running servers

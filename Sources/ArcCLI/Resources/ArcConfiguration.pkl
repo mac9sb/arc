@@ -1,0 +1,187 @@
+/// Arc configuration schema for local development.
+///
+/// This module defines the configuration structure for the arc proxy server,
+/// including routing rules for static sites and dynamic applications.
+///
+/// ## Example Usage
+///
+/// ```pkl
+/// amends "ArcConfiguration.pkl"
+///
+/// sites {
+///     new {
+///         kind = "static"
+///         name = "portfolio"
+///         domain = "portfolio.localhost"
+///         outputPath = "static/portfolio/.output"
+///     }
+///     new {
+///         kind = "app"
+///         name = "api"
+///         domain = "api.localhost"
+///         port = 8000
+///         process {
+///             workingDir = "apps/api"
+///             executable = ".build/release/API"
+///         }
+///     }
+/// }
+/// ```
+// @swift.Module { name = "ArcConfiguration" }
+module dev.personal.ArcConfig
+
+/// Port the proxy server listens on.
+///
+/// Default: 8080
+proxyPort: Int = 8080
+
+/// Directory for log files.
+///
+/// Default: "/var/log/arc"
+logDir: String = "/var/log/arc"
+
+/// Base directory for all projects.
+///
+/// This is used to resolve relative paths in site and app configurations.
+/// If not specified, inferred as directory containing config file.
+baseDir: String?
+
+/// Health check interval in seconds.
+///
+/// Default: 30
+healthCheckInterval: Int = 30
+
+/// Server version displayed in status.
+///
+/// Default: "V.2.0.0"
+version: String = "V.2.0.0"
+
+/// Deployment region identifier displayed in status.
+region: String?
+
+/// Optional process name for this arc instance.
+/// If nil, a Docker-style random name will be generated at runtime.
+processName: String?
+
+/// Unified list of sites (static and apps).
+sites: Listing<Site>
+
+/// Cloudflare Tunnel configuration.
+cloudflare: CloudflareTunnel?
+
+/// Global watch configuration.
+watch: WatchConfig?
+
+/// Site configuration (discriminated by kind).
+abstract class Site {
+    /// Type of site: "static" or "app"
+    kind: String
+
+    /// Unique identifier for this site.
+    name: String
+
+    /// Domain to match for routing.
+    ///
+    /// Example: "portfolio.localhost"
+    domain: String
+
+    /// Optional watch targets override.
+    watchTargets: Listing<String>?
+}
+
+/// Configuration for a static site served from a pre-built output directory.
+class StaticSite extends Site {
+    /// Must be "static"
+    kind: String = "static"
+
+    /// Path to the output directory relative to `baseDir`.
+    ///
+    /// Example: "static/portfolio/.output"
+    outputPath: String
+}
+
+/// Configuration for a dynamic application with health monitoring.
+class AppSite extends Site {
+    /// Must be "app"
+    kind: String = "app"
+
+    /// Port the application listens on.
+    ///
+    /// Should be in the range 8000-8099 for applications.
+    port: Int
+
+    /// Health check endpoint path.
+    ///
+    /// Default: "/health"
+    healthPath: String = "/health"
+
+    /// Process configuration.
+    process: ProcessConfig
+}
+
+/// Process configuration for app sites.
+class ProcessConfig {
+    /// Working directory relative to `baseDir`.
+    ///
+    /// Example: "apps/api"
+    workingDir: String
+
+    /// Path to executable (relative to workingDir or absolute).
+    executable: String?
+
+    /// Command to run (alternative to executable).
+    command: String?
+
+    /// Arguments for command.
+    args: Listing<String>?
+
+    /// Environment variables.
+    env: Mapping<String, String>?
+}
+
+/// Global watch configuration.
+class WatchConfig {
+    /// Whether to watch config.pkl for changes.
+    ///
+    /// Default: true
+    watchConfigPkl: Bool = true
+
+    /// Whether to follow symlinks when watching.
+    ///
+    /// Default: false
+    followSymlinks: Bool = false
+
+    /// Debounce interval in milliseconds.
+    ///
+    /// Default: 300
+    debounceMs: Int = 300
+
+    /// Cooldown period in milliseconds after restart.
+    ///
+    /// Default: 1000
+    cooldownMs: Int = 1000
+}
+
+/// Cloudflare Tunnel configuration.
+class CloudflareTunnel {
+    /// Whether to enable the Cloudflare Tunnel.
+    ///
+    /// Default: false
+    enabled: Bool = false
+
+    /// Path to cloudflared executable.
+    ///
+    /// Default: "/opt/homebrew/bin/cloudflared"
+    cloudflaredPath: String = "/opt/homebrew/bin/cloudflared"
+
+    /// Tunnel name or ID.
+    tunnelName: String?
+
+    /// Tunnel UUID (optional).
+    tunnelUUID: String?
+
+    /// Path to cloudflared config file.
+    ///
+    /// Default: "~/.cloudflared/config.yml"
+    configPath: String = "~/.cloudflared/config.yml"
+}

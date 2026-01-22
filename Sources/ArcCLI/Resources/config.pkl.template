@@ -1,0 +1,28 @@
+amends "ArcConfiguration.pkl"
+
+sites {
+    new {
+        kind = "static"
+        name = "example-site"
+        domain = "example-site.localhost"
+        outputPath = "static/example-site/.output"
+    }
+    new {
+        kind = "app"
+        name = "example-api"
+        domain = "example-api.localhost"
+        port = 8000
+        process {
+            workingDir = "apps/example-api"
+            executable = ".build/release/ExampleAPI"
+        }
+    }
+}
+
+cloudflare {
+    enabled = false
+    cloudflaredPath = "/opt/homebrew/bin/cloudflared"
+    tunnelName = ""
+    tunnelUUID = ""
+    configPath = "~/.cloudflared/config.yml"
+}

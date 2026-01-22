@@ -1,0 +1,30 @@
+import Foundation
+import Hummingbird
+import Logging
+import WebUI
+
+struct WebController {
+    let logger: Logger
+
+    /// Custom CSS configuration for SSR mode
+    private let cssConfig = CSSOutputConfig(ssrOutputDir: "Public/", mode: .ssr)
+
+    func addRoutes(to router: Router<BasicRequestContext>) {
+        router.get("/", use: home)
+    }
+
+    @Sendable
+    private func home(_ request: Request, _ context: BasicRequestContext) async throws -> HTMLResponse {
+        logger.debug("Serving home page")
+        let page = ExamplePage()
+        return try HTMLResponse(
+            page.render(
+                websiteScripts: nil,
+                websiteStylesheets: nil,
+                websiteHead: nil,
+                cssConfig: cssConfig,
+                slug: "home"
+            )
+        )
+    }
+}

@@ -1,0 +1,33 @@
+import Foundation
+import WebUI
+
+struct ExamplePage: Document {
+    var metadata: Metadata {
+        Metadata(
+            site: "Example API",
+            title: "Welcome",
+            description: "Example Hummingbird API with WebUI"
+        )
+    }
+
+    var body: some Markup {
+        Main {
+            Heading(.h1, "Welcome to Example API")
+            Text("This is an example Hummingbird API application using WebUI for rendering.")
+
+            Section {
+                Heading(.h2, "Send a Message")
+                Form(action: "/api/message", method: .post) {
+                    Label(for: "message") {
+                        "Message:"
+                    }
+                    Input(name: "message", type: .text, required: true, placeholder: "Enter your message")
+                    Button(type: .submit) {
+                        "Send Message"
+                    }
+                }
+            }
+        }
+        .padding(of: 16)
+    }
+}

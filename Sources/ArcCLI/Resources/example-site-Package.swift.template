@@ -1,0 +1,21 @@
+// swift-tools-version: 6.1
+
+import PackageDescription
+
+let package = Package(
+    name: "ExampleSite",
+    platforms: [
+        .macOS(.v15),
+    ],
+    dependencies: [
+        .package(url: "https://github.com/mac9sb/web-ui.git", branch: "main")
+    ],
+    targets: [
+        .executableTarget(
+            name: "ExampleSite",
+            dependencies: [
+                .product(name: "WebUI", package: "web-ui"),
+            ]
+        )
+    ]
+)

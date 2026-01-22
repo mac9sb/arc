@@ -1,0 +1,39 @@
+import Foundation
+import Hummingbird
+import Logging
+
+func buildApplication(logger: Logger) async throws -> some ApplicationProtocol {
+    let router = Router(context: BasicRequestContext.self)
+
+    // Add middleware
+    router.addMiddleware {
+        LogRequestsMiddleware(.info)
+    }
+
+    // Add routes
+    let webController = WebController(logger: logger)
+    webController.addRoutes(to: router)
+
+    let apiController = APIController(logger: logger)
+    apiController.addRoutes(to: router)
+
+    // Health check endpoint
+    router.get("health") { _, _ in
+        Response(
+            status: .ok,
+            headers: [.contentType: "application/json"],
+            body: .init(byteBuffer: .init(string: #"{"status":"healthy"}"#))
+        )
+    }
+
+    // Build application
+    let app = Application(
+        router: router,
+        configuration: .init(
+            address: .hostname("127.0.0.1", port: Int(ProcessInfo.processInfo.environment["PORT"] ?? "8000") ?? 8000)
+        ),
+        logger: logger
+    )
+
+    return app
+}

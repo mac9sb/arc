@@ -1,0 +1,3 @@
+import ArcCLI
+
+ArcRootCommand.main()

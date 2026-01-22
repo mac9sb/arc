@@ -1,0 +1,58 @@
+import Foundation
+import Hummingbird
+import Logging
+
+struct APIController {
+    let logger: Logger
+
+    func addRoutes(to router: Router<BasicRequestContext>) {
+        router.post("api/message", use: handleMessage)
+    }
+
+    @Sendable
+    private func handleMessage(_ request: Request, _ context: BasicRequestContext) async throws -> Response {
+        logger.info("Received message request")
+
+        // Decode form data or JSON
+        let body = try await request.body.collect(upTo: 1_000_000).get()
+        let bodyString = String(buffer: body)
+
+        // Parse form data (simple implementation)
+        var message: String?
+        for pair in bodyString.split(separator: "&") {
+            let parts = pair.split(separator: "=", maxSplits: 1)
+            if parts.count == 2, parts[0] == "message" {
+                message = String(parts[1]).removingPercentEncoding
+                break
+            }
+        }
+
+        guard let message = message, !message.isEmpty else {
+            let errorResponse = #"{"error":"Message is required"}"#
+            return Response(
+                status: .badRequest,
+                headers: [.contentType: "application/json"],
+                body: .init(byteBuffer: .init(string: errorResponse))
+            )
+        }
+
+        logger.info("Received message: \\(message)")
+
+        // Echo back the message
+        let response: [String: String] = [
+            "status": "success",
+            "message": message,
+            "receivedAt": ISO8601DateFormatter().string(from: Date())
+        ]
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        let jsonData = try encoder.encode(response)
+
+        return Response(
+            status: .ok,
+            headers: [.contentType: "application/json"],
+            body: .init(byteBuffer: .init(data: jsonData))
+        )
+    }
+}
