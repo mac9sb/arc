@@ -5,6 +5,7 @@ import Noora
 public enum CloudflaredConfigError: Error, Equatable {
     case tunnelUUIDRequired
     case noSitesConfigured
+    case sshDomainRequired
     case configWriteFailed(String)
 
     /// Returns an ErrorAlert for display with Noora.
@@ -27,6 +28,17 @@ public enum CloudflaredConfigError: Error, Equatable {
                 takeaways: [
                     "Cannot generate cloudflared ingress rules without site domains",
                     "Add at least one site with a domain to your config.pkl"
+                ]
+            )
+        case .sshDomainRequired:
+            return .alert(
+                "SSH is enabled but domain is missing in config.pkl",
+                takeaways: [
+                    "Add a domain to your ssh configuration:",
+                    "ssh {",
+                    "  enabled = true",
+                    "  domain = \"ssh.maclong.dev\"",
+                    "}"
                 ]
             )
         case .configWriteFailed(let message):
@@ -76,6 +88,15 @@ public struct CloudflaredConfigGenerator {
             yaml += "    service: http://localhost:\(config.proxyPort)\n"
             yaml += "    originRequest:\n"
             yaml += "      httpHostHeader: \(domain)\n"
+        }
+
+        // Add SSH ingress rule if enabled
+        if let ssh = config.ssh, ssh.enabled {
+            guard let sshDomain = ssh.domain, !sshDomain.isEmpty else {
+                throw CloudflaredConfigError.sshDomainRequired
+            }
+            yaml += "  - hostname: \(sshDomain)\n"
+            yaml += "    service: ssh://localhost:\(ssh.port)\n"
         }
 
         // Add catch-all rule

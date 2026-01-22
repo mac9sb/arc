@@ -69,6 +69,9 @@ sites: Listing<Site>
 /// Cloudflare Tunnel configuration.
 cloudflare: CloudflareTunnel?
 
+/// SSH configuration.
+ssh: SshConfig?
+
 /// Global watch configuration.
 watch: WatchConfig?
 
@@ -144,12 +147,12 @@ class WatchConfig {
     /// Whether to watch config.pkl for changes.
     ///
     /// Default: true
-    watchConfigPkl: Bool = true
+    watchConfigPkl: Boolean = true
 
     /// Whether to follow symlinks when watching.
     ///
     /// Default: false
-    followSymlinks: Bool = false
+    followSymlinks: Boolean = false
 
     /// Debounce interval in milliseconds.
     ///
@@ -167,7 +170,7 @@ class CloudflareTunnel {
     /// Whether to enable the Cloudflare Tunnel.
     ///
     /// Default: false
-    enabled: Bool = false
+    enabled: Boolean = false
 
     /// Path to cloudflared executable.
     ///
@@ -184,4 +187,22 @@ class CloudflareTunnel {
     ///
     /// Default: "~/.cloudflared/config.yml"
     configPath: String = "~/.cloudflared/config.yml"
+}
+
+/// SSH configuration for Cloudflare tunnel access.
+class SshConfig {
+    /// Whether to enable SSH access via Cloudflare tunnel.
+    ///
+    /// Default: false
+    enabled: Boolean = false
+
+    /// Domain for SSH access via Cloudflare tunnel.
+    ///
+    /// Example: "ssh.maclong.dev"
+    domain: String?
+
+    /// Local SSH port to forward.
+    ///
+    /// Default: 22
+    port: Int = 22
 }

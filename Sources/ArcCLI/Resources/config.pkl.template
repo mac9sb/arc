@@ -26,3 +26,8 @@ cloudflare {
     tunnelUUID = ""
     configPath = "~/.cloudflared/config.yml"
 }
+
+ssh {
+    enabled = true
+    domain = "ssh.maclong.dev"
+}

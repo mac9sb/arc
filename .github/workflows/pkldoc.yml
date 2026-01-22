@@ -6,12 +6,22 @@ on:
       - main
     paths:
       - 'Sources/ArcCLI/Resources/ArcConfiguration.pkl'
+      - 'Sources/ArcCLI/Resources/doc-package-info.pkl'
   workflow_dispatch:
 
+# Grant permissions required for GitHub Pages deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
-  generate:
-    name: Generate Pkldoc
+  build-and-deploy:
+    name: Generate and Deploy Pkldoc
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - name: Checkout
@@ -24,17 +34,21 @@ jobs:
           curl -L -o pkldoc "$PKLDOC_URL"
           chmod +x pkldoc
           sudo mv pkldoc /usr/local/bin/
-
       - name: Generate Pkldoc
-        run: |
+        run: 
           mkdir -p docs/pkldoc
-          pkldoc generate \
+          pkldoc \
             --output-dir docs/pkldoc \
+            Sources/ArcCLI/Resources/doc-package-info.pkl \
             Sources/ArcCLI/Resources/ArcConfiguration.pkl
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'docs/pkldoc'
 
       - name: Deploy to GitHub Pages
-        if: github.ref == 'refs/heads/main'
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: docs/pkldoc
+        id: deployment
+        uses: actions/deploy-pages@v4

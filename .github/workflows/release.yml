@@ -27,7 +27,7 @@ jobs:
             binary-name: arc-linux-x86_64
           - os: linux
             arch: aarch64
-            runner: ubuntu-22.04-arm64
+            runner: ubuntu-22.04-arm
             binary-name: arc-linux-aarch64
 
     steps:
@@ -48,7 +48,6 @@ jobs:
           swift-version: ${{ steps.swift-version.outputs.version }}
 
       - name: Cache Swift toolchain (macOS/Linux)
-        if: matrix.os != 'freebsd'
         uses: actions/cache@v4
         with:
           path: |
@@ -61,23 +60,21 @@ jobs:
       - name: Setup Swift (Linux)
         if: matrix.os == 'linux'
         run: |
-          SWIFT_VERSION="${{ steps.swift-version.outputs.version }}"
-          SWIFT_URL="https://download.swift.org/swift-${SWIFT_VERSION}-release/ubuntu$(lsb_release -rs | tr -d '.')/swift-${SWIFT_VERSION}-RELEASE/swift-${SWIFT_VERSION}-RELEASE-ubuntu$(lsb_release -rs)-$(uname -m).tar.gz"
-          
-          if [ ! -d ~/.swift/swift-${SWIFT_VERSION} ]; then
-            mkdir -p ~/.swift
-            curl -L "$SWIFT_URL" | tar -xz -C ~/.swift
-            mv ~/.swift/swift-${SWIFT_VERSION}-RELEASE-ubuntu* ~/.swift/swift-${SWIFT_VERSION}
-          fi
-          
-          echo "$HOME/.swift/swift-${SWIFT_VERSION}/usr/bin" >> $GITHUB_PATH
+          curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
+          tar zxf swiftly-$(uname -m).tar.gz
+          ./swiftly init --quiet-shell-followup
+          . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh"
+          hash -r
+          swiftly install ${{ steps.swift-version.outputs.version }}
+
+      - name: Resolve dependencies
+        run: swift package resolve
 
       - name: Cache SPM dependencies
-        if: matrix.os != 'freebsd'
         uses: actions/cache@v4
         with:
           path: .build
-          key: spm-${{ hashFiles('**/Package.resolved') }}-${{ matrix.os }}-${{ matrix.arch }}-${{ steps.swift-version.outputs.version }}
+          key: spm-${{ hashFiles('Package.resolved') }}-${{ matrix.os }}-${{ matrix.arch }}-${{ steps.swift-version.outputs.version }}
           restore-keys: |
             spm-${{ matrix.os }}-${{ matrix.arch }}-${{ steps.swift-version.outputs.version }}-
             spm-${{ matrix.os }}-${{ matrix.arch }}-

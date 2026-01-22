@@ -1,6 +1,8 @@
 import ArcCore
 import Foundation
+#if canImport(UniformTypeIdentifiers)
 import UniformTypeIdentifiers
+#endif
 
 /// Handles serving static site files from disk.
 ///
@@ -116,11 +118,40 @@ struct StaticFileHandler {
   }
 
   private func mimeTypeFor(path: String) -> String {
-    let ext = (path as NSString).pathExtension
+    let ext = (path as NSString).pathExtension.lowercased()
+    
+    #if canImport(UniformTypeIdentifiers)
     if let type = UTType(filenameExtension: ext)?.preferredMIMEType {
       return type
     }
-    return "application/octet-stream"
+    #endif
+    
+    // Fallback MIME type mapping for Linux and when UTType is unavailable
+    let mimeTypes: [String: String] = [
+      "html": "text/html",
+      "htm": "text/html",
+      "css": "text/css",
+      "js": "application/javascript",
+      "json": "application/json",
+      "png": "image/png",
+      "jpg": "image/jpeg",
+      "jpeg": "image/jpeg",
+      "gif": "image/gif",
+      "svg": "image/svg+xml",
+      "webp": "image/webp",
+      "ico": "image/x-icon",
+      "pdf": "application/pdf",
+      "txt": "text/plain",
+      "xml": "application/xml",
+      "zip": "application/zip",
+      "woff": "font/woff",
+      "woff2": "font/woff2",
+      "ttf": "font/ttf",
+      "otf": "font/otf",
+      "eot": "application/vnd.ms-fontobject",
+    ]
+    
+    return mimeTypes[ext] ?? "application/octet-stream"
   }
 }
 

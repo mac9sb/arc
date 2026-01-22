@@ -41,6 +41,9 @@ public struct ArcConfig: Decodable, Hashable, Sendable {
     /// Cloudflare Tunnel configuration.
     public var cloudflare: CloudflareTunnel?
 
+    /// SSH configuration.
+    public var ssh: SshConfig?
+
     /// Global watch configuration.
     public var watch: WatchConfig?
 
@@ -54,6 +57,7 @@ public struct ArcConfig: Decodable, Hashable, Sendable {
         dashboardDomains: [String] = [],
         sites: [Site] = [],
         cloudflare: CloudflareTunnel? = nil,
+        ssh: SshConfig? = nil,
         watch: WatchConfig? = nil,
         processName: String? = nil
     ) {
@@ -66,6 +70,7 @@ public struct ArcConfig: Decodable, Hashable, Sendable {
         self.dashboardDomains = dashboardDomains
         self.sites = sites
         self.cloudflare = cloudflare
+        self.ssh = ssh
         self.watch = watch
         self.processName = processName
     }
@@ -303,6 +308,30 @@ public struct CloudflareTunnel: Decodable, Hashable, Sendable {
         self.tunnelName = tunnelName
         self.tunnelUUID = tunnelUUID
         self.configPath = configPath
+    }
+}
+
+// MARK: - SshConfig
+
+/// SSH configuration for Cloudflare tunnel access.
+public struct SshConfig: Decodable, Hashable, Sendable {
+    /// Whether to enable SSH access via Cloudflare tunnel.
+    public var enabled: Bool
+
+    /// Domain for SSH access via Cloudflare tunnel.
+    public var domain: String?
+
+    /// Local SSH port to forward.
+    public var port: Int
+
+    public init(
+        enabled: Bool = false,
+        domain: String? = nil,
+        port: Int = 22
+    ) {
+        self.enabled = enabled
+        self.domain = domain
+        self.port = port
     }
 }
 
