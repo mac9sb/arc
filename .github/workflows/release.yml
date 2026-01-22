@@ -29,14 +29,6 @@ jobs:
             arch: aarch64
             runner: ubuntu-22.04-arm64
             binary-name: arc-linux-aarch64
-          - os: freebsd
-            arch: x86_64
-            runner: ubuntu-22.04
-            binary-name: arc-freebsd-x86_64
-          - os: freebsd
-            arch: aarch64
-            runner: ubuntu-22.04
-            binary-name: arc-freebsd-aarch64
 
     steps:
       - name: Checkout
@@ -103,33 +95,6 @@ jobs:
           swift build -c release
           mkdir -p release
           cp .build/release/arc release/${{ matrix.binary-name }}
-
-      - name: Build (FreeBSD)
-        if: matrix.os == 'freebsd'
-        uses: vmactions/freebsd-vm@v1
-        with:
-          release: "15.0"
-          arch: ${{ matrix.arch }}
-          usesh: true
-          prepare: |
-            pkg update -f
-            pkg install -y swift || {
-              echo "Swift not available via pkg, downloading from Swift.org"
-              SWIFT_VERSION="${{ steps.swift-version.outputs.version }}"
-              cd /tmp
-              fetch "https://download.swift.org/swift-${SWIFT_VERSION}-release/freebsd15/swift-${SWIFT_VERSION}-RELEASE/swift-${SWIFT_VERSION}-RELEASE-freebsd15-$(uname -m).tar.xz"
-              tar -xf "swift-${SWIFT_VERSION}-RELEASE-freebsd15-$(uname -m).tar.xz"
-              mv swift-${SWIFT_VERSION}-RELEASE-freebsd15-$(uname -m) /usr/local/swift
-              echo 'export PATH=/usr/local/swift/usr/bin:$PATH' >> ~/.shrc
-            }
-            export PATH=/usr/local/swift/usr/bin:$PATH || export PATH=/usr/local/bin:$PATH
-          run: |
-            cd $GITHUB_WORKSPACE
-            export PATH=/usr/local/swift/usr/bin:$PATH || export PATH=/usr/local/bin:$PATH
-            swift --version
-            swift build -c release
-            mkdir -p release
-            cp .build/release/arc release/${{ matrix.binary-name }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
