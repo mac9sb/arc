@@ -1,6 +1,6 @@
 # Arc
 
-Arc is a local development server management tool that provides a unified proxy for managing multiple static sites and dynamic applications.
+Arc is a server management tool that provides a unified proxy for managing multiple static sites and dynamic applications.
 
 ## Overview
 

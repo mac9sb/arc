@@ -18,7 +18,7 @@ let package = Package(
     .package(url: "https://github.com/tuist/Noora.git", .upToNextMajor(from: "0.15.0")),
     .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.3"),
     .package(url: "https://github.com/swiftlang/swift-testing", from: "0.11.0"),
-    .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
+    .package(url: "https://github.com/apple/swift-nio.git", from: "2.87.0"),
   ],
   targets: [
     .executableTarget(

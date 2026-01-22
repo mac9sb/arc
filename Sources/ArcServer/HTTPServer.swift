@@ -91,8 +91,13 @@ public final class HTTPServer: @unchecked Sendable {
     }
 }
 
+/// Sendable wrapper for ChannelHandlerContext pointer
+private struct ContextRef: @unchecked Sendable {
+    let ptr: UnsafeRawPointer
+}
+
 /// NIO channel handler that processes HTTP requests.
-private final class HTTPHandler: ChannelInboundHandler {
+private final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
     typealias InboundIn = HTTPServerRequestPart
     typealias OutboundOut = HTTPServerResponsePart
     
@@ -150,12 +155,15 @@ private final class HTTPHandler: ChannelInboundHandler {
             
             let serverRef = self.server
             let handler = self
-            context.eventLoop.execute {
-                Task {
-                    let response = await serverRef.route(request: request)
-                    handler.sendResponse(context: context, response: response)
-                }
-            }
+            let eventLoop = context.eventLoop
+            // Call directly since we're already on the event loop
+            // The handleRequestAsync method is nonisolated(unsafe) to handle the context safely
+            handler.handleRequestAsync(
+                server: serverRef,
+                context: context,
+                request: request,
+                eventLoop: eventLoop
+            )
             currentRequest = nil
             requestBuffer = Data()
         }
@@ -170,7 +178,29 @@ private final class HTTPHandler: ChannelInboundHandler {
         context.close(promise: nil)
     }
     
-    private func sendResponse(context: ChannelHandlerContext, response: HTTPResponse) {
+    /// Helper method to handle async request routing and response sending.
+    /// Marked nonisolated to allow capturing non-Sendable context in Task.
+    /// Safe because we ensure the context is only used on its event loop.
+    nonisolated func handleRequestAsync(
+        server: HTTPServer,
+        context: ChannelHandlerContext,
+        request: HTTPRequest,
+        eventLoop: EventLoop
+    ) {
+        let handler = self
+        // Capture context as Sendable wrapper - safe because we ensure context is only used on its event loop
+        let contextRef = ContextRef(ptr: Unmanaged.passUnretained(context).toOpaque())
+        Task {
+            let response = await server.route(request: request)
+            eventLoop.execute {
+                // Access sendResponse - safe because we're on the event loop
+                let context = Unmanaged<ChannelHandlerContext>.fromOpaque(contextRef.ptr).takeUnretainedValue()
+                handler.sendResponse(context: context, response: response)
+            }
+        }
+    }
+    
+    nonisolated private func sendResponse(context: ChannelHandlerContext, response: HTTPResponse) {
         var headers = HTTPHeaders()
         for (key, value) in response.headers {
             headers.add(name: key, value: value)

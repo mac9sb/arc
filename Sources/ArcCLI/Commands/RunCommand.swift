@@ -5,6 +5,13 @@ import Foundation
 import Noora
 import PklSwift
 
+/// Helper function to redirect stdout/stderr to a log file.
+/// Accesses global C stdio state, which is safe for global functions.
+private nonisolated func redirectStdioToLog(logPath: String) {
+    freopen(logPath, "a+", stdout)
+    freopen(logPath, "a+", stderr)
+}
+
 /// Command to run the Arc development server.
 ///
 /// Starts the Arc proxy server and manages all configured sites and applications.
@@ -134,8 +141,9 @@ struct RunCommand: AsyncParsableCommand {
                 atPath: logDir, withIntermediateDirectories: true)
         }
 
-        freopen(logPath, "a+", stdout)
-        freopen(logPath, "a+", stderr)
+        // Redirect stdout and stderr to log file
+        // Using nonisolated(unsafe) helper to access global C stdio state
+        redirectStdioToLog(logPath: logPath)
 
         // Create process descriptor (writes PID file and JSON descriptor)
         let descriptor = try await manager.create(
@@ -292,7 +300,7 @@ struct RunCommand: AsyncParsableCommand {
                     for target in targets {
                         let resolvedTarget = resolvePath(target, baseDir: initialConfig.baseDir)
                         var isDir: ObjCBool = false
-                        FileManager.default.fileExists(atPath: resolvedTarget, isDirectory: &isDir)
+                        _ = FileManager.default.fileExists(atPath: resolvedTarget, isDirectory: &isDir)
                         let siteName = site.name
                         watchTargets.append(
                             FileWatcher.WatchTarget(

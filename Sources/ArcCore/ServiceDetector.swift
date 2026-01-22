@@ -200,39 +200,35 @@ public struct ServiceDetector {
   /// - Parameter port: The port number.
   /// - Returns: The PID if found, nil otherwise.
   public static func getPIDForPort(_ port: Int) -> Int32? {
-    #if os(macOS)
-      let task = Process()
-      task.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
-      task.arguments = ["-ti", ":\(port)"]
+    let task = Process()
+    task.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
+    task.arguments = ["-ti", ":\(port)"]
 
-      let pipe = Pipe()
-      task.standardOutput = pipe
-      task.standardError = Pipe()  // Suppress errors
+    let pipe = Pipe()
+    task.standardOutput = pipe
+    task.standardError = Pipe()  // Suppress errors
 
-      do {
-        try task.run()
-        task.waitUntilExit()
+    do {
+      try task.run()
+      task.waitUntilExit()
 
-        guard task.terminationStatus == 0 else {
-          return nil
-        }
-
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        guard
-          let output = String(data: data, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-          !output.isEmpty,
-          let pid = Int32(output.components(separatedBy: .newlines).first ?? "")
-        else {
-          return nil
-        }
-
-        return pid
-      } catch {
+      guard task.terminationStatus == 0 else {
         return nil
       }
-    #else
+
+      let data = pipe.fileHandleForReading.readDataToEndOfFile()
+      guard
+        let output = String(data: data, encoding: .utf8)?
+          .trimmingCharacters(in: .whitespacesAndNewlines),
+        !output.isEmpty,
+        let pid = Int32(output.components(separatedBy: .newlines).first ?? "")
+      else {
+        return nil
+      }
+
+      return pid
+    } catch {
       return nil
-    #endif
+    }
   }
 }

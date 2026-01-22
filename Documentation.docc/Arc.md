@@ -20,6 +20,8 @@ See the ``GettingStarted`` tutorial to set up your first Arc project.
 
 Arc uses Pkl (Programmable Configuration Language) for configuration. See the ``Configuration`` tutorial for details on setting up your `config.pkl` file.
 
+For complete Pkl configuration schema documentation, see the [Pkl Configuration Documentation](/arc/pkldoc/).
+
 ## Commands
 
 - ``init`` - Initialize a new Arc project

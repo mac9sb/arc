@@ -1,8 +1,6 @@
 import ArcCore
 import Foundation
-#if canImport(UniformTypeIdentifiers)
 import UniformTypeIdentifiers
-#endif
 
 /// Handles serving static site files from disk.
 ///
@@ -120,13 +118,11 @@ struct StaticFileHandler {
   private func mimeTypeFor(path: String) -> String {
     let ext = (path as NSString).pathExtension.lowercased()
     
-    #if canImport(UniformTypeIdentifiers)
     if let type = UTType(filenameExtension: ext)?.preferredMIMEType {
       return type
     }
-    #endif
     
-    // Fallback MIME type mapping for Linux and when UTType is unavailable
+    // Fallback MIME type mapping
     let mimeTypes: [String: String] = [
       "html": "text/html",
       "htm": "text/html",
