@@ -2,10 +2,24 @@ import ArcCore
 import Foundation
 import Noora
 
+/// Handles HTTP proxying to dynamic application sites.
+///
+/// Forwards incoming HTTP requests to configured application backends,
+/// performs health checks, and manages request/response transformation.
+///
+/// ## Example
+///
+/// ```swift
+/// let handler = ProxyHandler(config: arcConfig)
+/// let response = await handler.handle(request: httpRequest, appSite: appSite)
+/// ```
 public struct ProxyHandler {
     private var config: ArcConfig
     private let session: URLSession
 
+    /// Creates a new proxy handler.
+    ///
+    /// - Parameter config: The Arc configuration containing site definitions.
     public init(config: ArcConfig) {
         self.config = config
         let configuration = URLSessionConfiguration.default

@@ -2,10 +2,23 @@ import ArcCore
 import Foundation
 import UniformTypeIdentifiers
 
-/// Serves static sites directly from disk.
+/// Handles serving static site files from disk.
+///
+/// Serves pre-built static site files from configured output directories,
+/// with support for directory listings and proper MIME type detection.
+///
+/// ## Example
+///
+/// ```swift
+/// let handler = StaticFileHandler(config: arcConfig)
+/// let response = handler.handle(request: httpRequest, site: staticSite, baseDir: baseDir)
+/// ```
 struct StaticFileHandler {
   private let config: ArcConfig
 
+  /// Creates a new static file handler.
+  ///
+  /// - Parameter config: The Arc configuration containing site definitions.
   init(config: ArcConfig) {
     self.config = config
   }

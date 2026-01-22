@@ -5,18 +5,45 @@ import Foundation
 import Noora
 import PklSwift
 
+/// Command to display the status of Arc server processes.
+///
+/// Shows information about running Arc processes, including:
+/// - Process name, PID, and port
+/// - CPU and memory usage
+/// - Uptime
+/// - Site health status
+///
+/// ## Usage
+///
+/// ```bash
+/// arc status              # List all running processes
+/// arc status <name>        # Show detailed status for a specific process
+/// ```
 struct StatusCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "status",
         abstract: "Show arc server status"
     )
 
+    /// Path to the Pkl configuration file.
+    ///
+    /// Defaults to `pkl/config.pkl` in the current directory.
     @Option(name: .shortAndLong, help: "Path to config file")
     var config: String = "pkl/config.pkl"
 
+    /// Optional process name to inspect.
+    ///
+    /// If provided, shows detailed status for the specified process including
+    /// site health information. If omitted, lists all running processes.
     @Argument(help: "Optional process name to inspect")
     var name: String?
 
+    /// Executes the status command.
+    ///
+    /// Displays process information either for all processes or a specific
+    /// process if a name is provided.
+    ///
+    /// - Throws: An error if configuration loading or process inspection fails.
     func run() async throws {
         let configURL = URL(fileURLWithPath: config)
         let baseDir = configURL.deletingLastPathComponent().path

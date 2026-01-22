@@ -2,7 +2,7 @@ import Foundation
 import Noora
 
 /// Error types for cloudflared configuration generation.
-public enum CloudflaredConfigError: Error {
+public enum CloudflaredConfigError: Error, Equatable {
     case tunnelUUIDRequired
     case noSitesConfigured
     case configWriteFailed(String)

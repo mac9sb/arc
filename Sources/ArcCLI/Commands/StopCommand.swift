@@ -3,21 +3,51 @@ import ArgumentParser
 import Foundation
 import Noora
 
+/// Command to stop Arc server processes.
+///
+/// Stops running Arc servers gracefully, with fallback to force kill if needed.
+/// Can stop a specific process by name, all processes, or interactively select
+/// from a list.
+///
+/// ## Usage
+///
+/// ```bash
+/// arc stop                # Interactive mode: list and select process
+/// arc stop <name>         # Stop a specific process by name
+/// arc stop --all          # Stop all running processes
+/// ```
 struct StopCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "stop",
         abstract: "Stop arc server"
     )
 
+    /// Path to the Pkl configuration file.
+    ///
+    /// Defaults to `pkl/config.pkl` in the current directory.
     @Option(name: .shortAndLong, help: "Path to config file")
     var config: String = "pkl/config.pkl"
 
+    /// Optional process name to stop.
+    ///
+    /// If provided, stops only the specified process. If omitted and `all` is
+    /// false, enters interactive mode.
     @Argument(help: "Optional process name to stop")
     var name: String?
 
+    /// Whether to stop all running Arc processes.
+    ///
+    /// When enabled, stops all running Arc server processes regardless of
+    /// the `name` argument.
     @Flag(name: .long, help: "Stop all running arc processes")
     var all: Bool = false
 
+    /// Executes the stop command.
+    ///
+    /// Stops processes gracefully using SIGTERM, with automatic fallback to
+    /// SIGKILL if graceful shutdown fails.
+    ///
+    /// - Throws: An error if process stopping fails.
     func run() async throws {
         let configURL = URL(fileURLWithPath: config)
         let baseDir = configURL.deletingLastPathComponent().path

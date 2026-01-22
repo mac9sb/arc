@@ -1,4 +1,4 @@
-// swift-tools-version: 6.2.3
+// swift-tools-version: 6.2
 import PackageDescription
 
 let package = Package(
@@ -16,6 +16,8 @@ let package = Package(
     .package(url: "https://github.com/apple/pkl-swift.git", from: "0.3.0"),
     .package(url: "https://github.com/apple/swift-log.git", from: "1.5.0"),
     .package(url: "https://github.com/tuist/Noora.git", .upToNextMajor(from: "0.15.0")),
+    .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.3"),
+    .package(url: "https://github.com/swiftlang/swift-testing", from: "0.11.0"),
   ],
   targets: [
     .executableTarget(
@@ -49,6 +51,21 @@ let package = Package(
         .product(name: "PklSwift", package: "pkl-swift"),
         .product(name: "Logging", package: "swift-log"),
         .product(name: "Noora", package: "Noora"),
+      ]
+    ),
+    .testTarget(
+      name: "ArcCoreTests",
+      dependencies: [
+        "ArcCore",
+        .product(name: "Testing", package: "swift-testing"),
+      ]
+    ),
+    .testTarget(
+      name: "ArcServerTests",
+      dependencies: [
+        "ArcServer",
+        "ArcCore",
+        .product(name: "Testing", package: "swift-testing"),
       ]
     ),
   ]

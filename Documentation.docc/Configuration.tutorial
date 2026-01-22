@@ -1,0 +1,86 @@
+# Configuring Arc
+
+Learn how to configure Arc using Pkl configuration files.
+
+@Tutorial(time: 15) {
+    @Intro(title: "Arc Configuration") {
+        Arc uses Pkl (Programmable Configuration Language) for flexible, type-safe configuration.
+    }
+
+    @Section(title: "Configuration File Location") {
+        @ContentAndMedia {
+            By default, Arc looks for `pkl/config.pkl` in your project root. You can specify a different path:
+
+            ```bash
+            arc run --config /path/to/config.pkl
+            ```
+        }
+    }
+
+    @Section(title: "Basic Configuration") {
+        @ContentAndMedia {
+            A minimal configuration includes:
+
+            ```pkl
+            proxyPort = 8080
+            sites {
+                new {
+                    name = "example"
+                    domain = "example.localhost"
+                    // ... site configuration
+                }
+            }
+            ```
+        }
+    }
+
+    @Section(title: "Static Sites") {
+        @ContentAndMedia {
+            Configure static sites with:
+
+            ```pkl
+            sites {
+                new {
+                    name = "portfolio"
+                    domain = "portfolio.localhost"
+                    type = "static"
+                    outputPath = "static/portfolio/.output"
+                }
+            }
+            ```
+        }
+    }
+
+    @Section(title: "Dynamic Applications") {
+        @ContentAndMedia {
+            Configure dynamic applications:
+
+            ```pkl
+            sites {
+                new {
+                    name = "api"
+                    domain = "api.localhost"
+                    type = "app"
+                    workingDir = "apps/api"
+                    port = 8000
+                    healthPath = "/health"
+                }
+            }
+            ```
+        }
+    }
+
+    @Section(title: "Cloudflare Tunnel") {
+        @ContentAndMedia {
+            Enable Cloudflare tunnel integration:
+
+            ```pkl
+            cloudflare {
+                enabled = true
+                tunnelUUID = "your-tunnel-uuid"
+                configPath = "~/.cloudflared/config.yml"
+            }
+            ```
+        }
+    }
+}

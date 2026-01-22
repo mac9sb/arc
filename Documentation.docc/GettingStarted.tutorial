@@ -1,0 +1,67 @@
+# Getting Started with Arc
+
+Learn how to set up and use Arc for local development.
+
+@Tutorial(time: 10) {
+    @Intro(title: "Get Started with Arc") {
+        Arc helps you manage multiple local development projects through a unified proxy server.
+    }
+
+    @Section(title: "Install Arc") {
+        @ContentAndMedia {
+            Install Arc using Swift Package Manager or download a pre-built binary.
+
+            ```bash
+            git clone <repository-url>
+            cd arc
+            swift build -c release
+            ```
+
+            Or download a pre-built binary from the releases page.
+        }
+    }
+
+    @Section(title: "Initialize a Project") {
+        @ContentAndMedia {
+            Create a new Arc project in your current directory:
+
+            ```bash
+            arc init
+            ```
+
+            This creates the necessary directory structure and example files.
+        }
+    }
+
+    @Section(title: "Configure Your Sites") {
+        @ContentAndMedia {
+            Edit `pkl/config.pkl` to add your static sites and applications:
+
+            ```pkl
+            sites {
+                new {
+                    name = "my-site"
+                    domain = "mysite.localhost"
+                    // ... configuration
+                }
+            }
+            ```
+        }
+    }
+
+    @Section(title: "Start the Server") {
+        @ContentAndMedia {
+            Run Arc in foreground mode:
+
+            ```bash
+            arc run
+            ```
+
+            Or run in background:
+
+            ```bash
+            arc run --background
+            ```
+        }
+    }
+}

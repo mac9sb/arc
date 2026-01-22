@@ -5,21 +5,51 @@ import Foundation
 import Noora
 import PklSwift
 
+/// Command to run the Arc development server.
+///
+/// Starts the Arc proxy server and manages all configured sites and applications.
+/// Can run in foreground or background mode.
+///
+/// ## Usage
+///
+/// ```bash
+/// arc run                    # Run in foreground with default config
+/// arc run --config custom.pkl # Use custom config file
+/// arc run --background        # Run in background mode
+/// ```
 struct RunCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "run",
         abstract: "Run arc server"
     )
 
+    /// Path to the Pkl configuration file.
+    ///
+    /// Defaults to `pkl/config.pkl` in the current directory.
     @Option(name: .shortAndLong, help: "Path to config file")
     var config: String = "pkl/config.pkl"
 
+    /// Whether to run the server in background mode.
+    ///
+    /// When enabled, the server runs as a background process and returns control
+    /// to the terminal immediately.
     @Flag(name: .long, help: "Run in background mode")
     var background: Bool = false
 
+    /// Path to the log file for background mode.
+    ///
+    /// Only used when `background` is `true`. If not specified, logs are written
+    /// to a default location.
     @Option(name: .long, help: "Log file path (for background mode)")
     var logFile: String?
 
+    /// Executes the run command.
+    ///
+    /// Starts the Arc server in either foreground or background mode based on
+    /// the `background` flag.
+    ///
+    /// - Throws: An error if configuration loading, server startup, or process
+    ///   management fails.
     func run() async throws {
         if background {
             try await runBackground()

@@ -1,0 +1,166 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build for ${{ matrix.os }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos
+            arch: x86_64
+            runner: macos-14
+            binary-name: arc-macos-x86_64
+          - os: macos
+            arch: aarch64
+            runner: macos-14
+            binary-name: arc-macos-aarch64
+          - os: linux
+            arch: x86_64
+            runner: ubuntu-22.04
+            binary-name: arc-linux-x86_64
+          - os: linux
+            arch: aarch64
+            runner: ubuntu-22.04-arm64
+            binary-name: arc-linux-aarch64
+          - os: freebsd
+            arch: x86_64
+            runner: ubuntu-22.04
+            binary-name: arc-freebsd-x86_64
+          - os: freebsd
+            arch: aarch64
+            runner: ubuntu-22.04
+            binary-name: arc-freebsd-aarch64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract Swift version
+        id: swift-version
+        run: |
+          VERSION=$(grep -m1 'swift-tools-version' Package.swift | sed 's/.*: *//' | tr -d ' ')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Swift version: $VERSION"
+
+      - name: Setup Swift (macOS)
+        if: matrix.os == 'macos'
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: ${{ steps.swift-version.outputs.version }}
+
+      - name: Cache Swift toolchain (macOS/Linux)
+        if: matrix.os != 'freebsd'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.swift
+            /usr/local/swift
+          key: swift-${{ steps.swift-version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
+          restore-keys: |
+            swift-${{ steps.swift-version.outputs.version }}-${{ matrix.os }}-
+
+      - name: Setup Swift (Linux)
+        if: matrix.os == 'linux'
+        run: |
+          SWIFT_VERSION="${{ steps.swift-version.outputs.version }}"
+          SWIFT_URL="https://download.swift.org/swift-${SWIFT_VERSION}-release/ubuntu$(lsb_release -rs | tr -d '.')/swift-${SWIFT_VERSION}-RELEASE/swift-${SWIFT_VERSION}-RELEASE-ubuntu$(lsb_release -rs)-$(uname -m).tar.gz"
+          
+          if [ ! -d ~/.swift/swift-${SWIFT_VERSION} ]; then
+            mkdir -p ~/.swift
+            curl -L "$SWIFT_URL" | tar -xz -C ~/.swift
+            mv ~/.swift/swift-${SWIFT_VERSION}-RELEASE-ubuntu* ~/.swift/swift-${SWIFT_VERSION}
+          fi
+          
+          echo "$HOME/.swift/swift-${SWIFT_VERSION}/usr/bin" >> $GITHUB_PATH
+
+      - name: Cache SPM dependencies
+        if: matrix.os != 'freebsd'
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: spm-${{ hashFiles('**/Package.resolved') }}-${{ matrix.os }}-${{ matrix.arch }}-${{ steps.swift-version.outputs.version }}
+          restore-keys: |
+            spm-${{ matrix.os }}-${{ matrix.arch }}-${{ steps.swift-version.outputs.version }}-
+            spm-${{ matrix.os }}-${{ matrix.arch }}-
+
+      - name: Build (macOS)
+        if: matrix.os == 'macos'
+        run: |
+          swift build -c release --arch ${{ matrix.arch == 'x86_64' && 'x86_64' || 'arm64' }}
+          mkdir -p release
+          cp .build/release/arc release/${{ matrix.binary-name }}
+
+      - name: Build (Linux)
+        if: matrix.os == 'linux'
+        run: |
+          swift build -c release
+          mkdir -p release
+          cp .build/release/arc release/${{ matrix.binary-name }}
+
+      - name: Build (FreeBSD)
+        if: matrix.os == 'freebsd'
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "15.0"
+          arch: ${{ matrix.arch }}
+          usesh: true
+          prepare: |
+            pkg update -f
+            pkg install -y swift || {
+              echo "Swift not available via pkg, downloading from Swift.org"
+              SWIFT_VERSION="${{ steps.swift-version.outputs.version }}"
+              cd /tmp
+              fetch "https://download.swift.org/swift-${SWIFT_VERSION}-release/freebsd15/swift-${SWIFT_VERSION}-RELEASE/swift-${SWIFT_VERSION}-RELEASE-freebsd15-$(uname -m).tar.xz"
+              tar -xf "swift-${SWIFT_VERSION}-RELEASE-freebsd15-$(uname -m).tar.xz"
+              mv swift-${SWIFT_VERSION}-RELEASE-freebsd15-$(uname -m) /usr/local/swift
+              echo 'export PATH=/usr/local/swift/usr/bin:$PATH' >> ~/.shrc
+            }
+            export PATH=/usr/local/swift/usr/bin:$PATH || export PATH=/usr/local/bin:$PATH
+          run: |
+            cd $GITHUB_WORKSPACE
+            export PATH=/usr/local/swift/usr/bin:$PATH || export PATH=/usr/local/bin:$PATH
+            swift --version
+            swift build -c release
+            mkdir -p release
+            cp .build/release/arc release/${{ matrix.binary-name }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.binary-name }}
+          path: release/${{ matrix.binary-name }}
+          retention-days: 1
+
+  create-release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          files: |
+            artifacts/*/arc-*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

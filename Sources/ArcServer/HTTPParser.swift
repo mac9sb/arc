@@ -1,7 +1,17 @@
 import Foundation
 
-/// Parses HTTP request data.
+/// Parser for HTTP request data.
+///
+/// Parses raw HTTP request bytes into a structured `HTTPRequest` object,
+/// extracting method, path, headers, and body.
 enum HTTPParser {
+  /// Parses raw HTTP request data into an `HTTPRequest`.
+  ///
+  /// Parses the HTTP request line, headers, and body from raw bytes.
+  /// Expects HTTP/1.1 format with `\r\n` line endings.
+  ///
+  /// - Parameter data: The raw HTTP request bytes.
+  /// - Returns: A parsed `HTTPRequest` if parsing succeeds, `nil` otherwise.
   static func parse(data: Data) -> HTTPRequest? {
     guard let requestString = String(data: data, encoding: .utf8) else { return nil }
     guard let headerEndRange = requestString.range(of: "\r\n\r\n") else { return nil }

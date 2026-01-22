@@ -4,18 +4,42 @@ import Foundation
 import Noora
 import PklSwift
 
+/// Command to view Arc server logs.
+///
+/// Displays log file contents, with optional follow mode for real-time
+/// log streaming.
+///
+/// ## Usage
+///
+/// ```bash
+/// arc logs                # Show last 50 lines of logs
+/// arc logs --follow       # Follow log output (like tail -f)
+/// ```
 struct LogsCommand: AsyncParsableCommand {
   static let configuration = CommandConfiguration(
     commandName: "logs",
     abstract: "Show arc server logs"
   )
 
+  /// Path to the Pkl configuration file.
+  ///
+  /// Defaults to `pkl/config.pkl` in the current directory.
   @Option(name: .shortAndLong, help: "Path to config file")
   var config: String = "pkl/config.pkl"
 
+  /// Whether to follow log output in real-time.
+  ///
+  /// When enabled, continuously displays new log entries as they are written,
+  /// similar to `tail -f`.
   @Flag(name: .long, help: "Follow log output")
   var follow: Bool = false
 
+  /// Executes the logs command.
+  ///
+  /// Reads and displays log file contents. In follow mode, streams new
+  /// log entries as they are written.
+  ///
+  /// - Throws: An error if the log file cannot be read.
   func run() async throws {
     let configURL = URL(fileURLWithPath: config)
 
