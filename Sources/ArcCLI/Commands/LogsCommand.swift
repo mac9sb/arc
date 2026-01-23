@@ -4,6 +4,11 @@ import Foundation
 import Noora
 import PklSwift
 
+/// Thread-safe box for passing errors from async Tasks
+private final class ErrorBox: @unchecked Sendable {
+    var error: Error?
+}
+
 /// Command to view Arc server logs.
 ///
 /// Displays log file contents, with optional follow mode for real-time
@@ -15,8 +20,10 @@ import PklSwift
 /// arc logs                # Show last 50 lines of logs
 /// arc logs --follow       # Follow log output (like tail -f)
 /// ```
-struct LogsCommand: AsyncParsableCommand {
-  static let configuration = CommandConfiguration(
+public struct LogsCommand: ParsableCommand {
+  public init() {}
+  
+  public static let configuration = CommandConfiguration(
     commandName: "logs",
     abstract: "Show arc server logs"
   )
@@ -40,12 +47,34 @@ struct LogsCommand: AsyncParsableCommand {
   /// log entries as they are written.
   ///
   /// - Throws: An error if the log file cannot be read.
-  func run() async throws {
-    let configURL = URL(fileURLWithPath: config)
+  public func run() throws {
+    let configPath = config
+    let shouldFollow = follow
+    
+    let semaphore = DispatchSemaphore(value: 0)
+    let errorBox = ErrorBox()
+    
+    Task { @Sendable in
+      defer { semaphore.signal() }
+      do {
+        try await Self.runAsync(configPath: configPath, follow: shouldFollow)
+      } catch {
+        errorBox.error = error
+      }
+    }
+    
+    semaphore.wait()
+    if let error = errorBox.error {
+      throw error
+    }
+  }
+  
+  private static func runAsync(configPath: String, follow: Bool) async throws {
+    let configURL = URL(fileURLWithPath: configPath)
 
     guard
       let config = try? await ArcConfig.loadFrom(
-        source: ModuleSource.path(config),
+        source: ModuleSource.path(configPath),
         configPath: configURL
       )
     else {

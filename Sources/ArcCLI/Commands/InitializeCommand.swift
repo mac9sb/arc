@@ -2,8 +2,10 @@ import ArgumentParser
 import Foundation
 import Noora
 
-struct InitializeCommand: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+public struct InitializeCommand: ParsableCommand {
+    public init() {}
+    
+    public static let configuration = CommandConfiguration(
         commandName: "init",
         abstract: "Initialize a new arc project"
     )
@@ -14,7 +16,7 @@ struct InitializeCommand: AsyncParsableCommand {
     @Option(name: .shortAndLong, help: "Directory to initialize project in")
     var directory: String?
 
-    func run() async throws {
+    public func run() throws {
         let targetDir: String
         if let directory = directory {
             targetDir = (directory as NSString).expandingTildeInPath

@@ -5,6 +5,11 @@ import Foundation
 import Noora
 import PklSwift
 
+/// Thread-safe box for passing errors from async Tasks
+private final class ErrorBox: @unchecked Sendable {
+    var error: Error?
+}
+
 /// Command to display the status of Arc server processes.
 ///
 /// Shows information about running Arc processes, including:
@@ -19,8 +24,10 @@ import PklSwift
 /// arc status              # List all running processes
 /// arc status <name>        # Show detailed status for a specific process
 /// ```
-struct StatusCommand: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+public struct StatusCommand: ParsableCommand {
+    public init() {}
+    
+    public static let configuration = CommandConfiguration(
         commandName: "status",
         abstract: "Show arc server status"
     )
@@ -44,26 +51,42 @@ struct StatusCommand: AsyncParsableCommand {
     /// process if a name is provided.
     ///
     /// - Throws: An error if configuration loading or process inspection fails.
-    func run() async throws {
-        let configURL = URL(fileURLWithPath: config)
-        let baseDir = configURL.deletingLastPathComponent().path
-        let pidDir = URL(fileURLWithPath: "\(baseDir)/.pid")
+    public func run() throws {
+        let configPath = config
+        let processName = name
+        
+        let semaphore = DispatchSemaphore(value: 0)
+        let errorBox = ErrorBox()
+        
+        Task { @Sendable in
+            defer { semaphore.signal() }
+            do {
+                let configURL = URL(fileURLWithPath: configPath)
+                let baseDir = configURL.deletingLastPathComponent().path
+                let pidDir = URL(fileURLWithPath: "\(baseDir)/.pid")
 
-        let manager = ProcessDescriptorManager(baseDir: pidDir)
+                let manager = ProcessDescriptorManager(baseDir: pidDir)
 
-        if let processName = name {
-            // Show per-process site view
-            try await showProcessDetails(
-                processName: processName, manager: manager, baseDir: baseDir)
-        } else {
-            // List all processes
-            try await listAllProcesses(manager: manager)
+                if let processName = processName {
+                    try await Self.showProcessDetails(
+                        processName: processName, manager: manager, baseDir: baseDir)
+                } else {
+                    try await Self.listAllProcesses(manager: manager)
+                }
+            } catch {
+                errorBox.error = error
+            }
+        }
+        
+        semaphore.wait()
+        if let error = errorBox.error {
+            throw error
         }
     }
 
     // MARK: - List All Processes
 
-    private func listAllProcesses(manager: ProcessDescriptorManager) async throws {
+    private static func listAllProcesses(manager: ProcessDescriptorManager) async throws {
         let descriptors = try await manager.listAll()
 
         if descriptors.isEmpty {
@@ -122,7 +145,7 @@ struct StatusCommand: AsyncParsableCommand {
 
     // MARK: - Show Process Details
 
-    private func showProcessDetails(
+    private static func showProcessDetails(
         processName: String,
         manager: ProcessDescriptorManager,
         baseDir: String
@@ -234,7 +257,7 @@ struct StatusCommand: AsyncParsableCommand {
 
     // MARK: - Helpers
 
-    private func resolvePath(_ path: String, baseDir: String?, workingDir: String?) -> String {
+    private static func resolvePath(_ path: String, baseDir: String?, workingDir: String?) -> String {
         let expanded = (path as NSString).expandingTildeInPath
         if (expanded as NSString).isAbsolutePath {
             return expanded
@@ -255,7 +278,7 @@ struct StatusCommand: AsyncParsableCommand {
         return expanded
     }
 
-    private func uptimeString(from startDate: Date) -> String {
+    private static func uptimeString(from startDate: Date) -> String {
         let elapsed = Date().timeIntervalSince(startDate)
         let hours = Int(elapsed) / 3600
         let minutes = Int(elapsed.truncatingRemainder(dividingBy: 3600)) / 60
@@ -270,7 +293,7 @@ struct StatusCommand: AsyncParsableCommand {
         }
     }
 
-    private func formatDate(_ date: Date) -> String {
+    private static func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
         formatter.timeStyle = .short
