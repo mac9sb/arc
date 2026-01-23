@@ -26,7 +26,7 @@ private final class ErrorBox: @unchecked Sendable {
 /// ```
 public struct StatusCommand: ParsableCommand {
     public init() {}
-    
+
     public static let configuration = CommandConfiguration(
         commandName: "status",
         abstract: "Show arc server status"
@@ -34,9 +34,9 @@ public struct StatusCommand: ParsableCommand {
 
     /// Path to the Pkl configuration file.
     ///
-    /// Defaults to `pkl/config.pkl` in the current directory.
+    /// Defaults to `config.pkl` in the current directory.
     @Option(name: .shortAndLong, help: "Path to config file")
-    var config: String = "pkl/config.pkl"
+    var config: String = "config.pkl"
 
     /// Optional process name to inspect.
     ///
@@ -54,10 +54,10 @@ public struct StatusCommand: ParsableCommand {
     public func run() throws {
         let configPath = config
         let processName = name
-        
+
         let semaphore = DispatchSemaphore(value: 0)
         let errorBox = ErrorBox()
-        
+
         Task { @Sendable in
             defer { semaphore.signal() }
             do {
@@ -77,7 +77,7 @@ public struct StatusCommand: ParsableCommand {
                 errorBox.error = error
             }
         }
-        
+
         semaphore.wait()
         if let error = errorBox.error {
             throw error

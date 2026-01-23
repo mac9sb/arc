@@ -23,7 +23,7 @@ private final class ErrorBox: @unchecked Sendable {
 /// ```
 public struct StopCommand: ParsableCommand {
     public init() {}
-    
+
     public static let configuration = CommandConfiguration(
         commandName: "stop",
         abstract: "Stop arc server"
@@ -31,9 +31,9 @@ public struct StopCommand: ParsableCommand {
 
     /// Path to the Pkl configuration file.
     ///
-    /// Defaults to `pkl/config.pkl` in the current directory.
+    /// Defaults to `config.pkl` in the current directory.
     @Option(name: .shortAndLong, help: "Path to config file")
-    var config: String = "pkl/config.pkl"
+    var config: String = "config.pkl"
 
     /// Optional process name to stop.
     ///
@@ -59,10 +59,10 @@ public struct StopCommand: ParsableCommand {
         let configPath = config
         let processName = name
         let stopAll = all
-        
+
         let semaphore = DispatchSemaphore(value: 0)
         let errorBox = ErrorBox()
-        
+
         Task { @Sendable in
             defer { semaphore.signal() }
             do {
@@ -123,7 +123,7 @@ public struct StopCommand: ParsableCommand {
                 errorBox.error = error
             }
         }
-        
+
         semaphore.wait()
         if let error = errorBox.error {
             throw error

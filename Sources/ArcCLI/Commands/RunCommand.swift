@@ -31,7 +31,7 @@ private nonisolated func redirectStdioToLog(logPath: String) {
 /// ```
 public struct RunCommand: ParsableCommand {
     public init() {}
-    
+
     public static let configuration = CommandConfiguration(
         commandName: "run",
         abstract: "Run arc server"
@@ -39,9 +39,9 @@ public struct RunCommand: ParsableCommand {
 
     /// Path to the Pkl configuration file.
     ///
-    /// Defaults to `pkl/config.pkl` in the current directory.
+    /// Defaults to `config.pkl` in the current directory.
     @Option(name: .shortAndLong, help: "Path to config file")
-    var config: String = "pkl/config.pkl"
+    var config: String = "config.pkl"
 
     /// Whether to run the server in background mode.
     ///
@@ -68,12 +68,12 @@ public struct RunCommand: ParsableCommand {
         let configPath = config
         let runBackground = background
         let logFilePath = logFile
-        
+
         // For long-running server, we use a semaphore that's never signaled
         // The process will run until killed (Ctrl+C)
         let semaphore = DispatchSemaphore(value: 0)
         let errorBox = ErrorBox()
-        
+
         Task { @Sendable in
             do {
                 if runBackground {
@@ -87,7 +87,7 @@ public struct RunCommand: ParsableCommand {
             }
             // Note: semaphore.signal() is NOT called on success - server runs until killed
         }
-        
+
         semaphore.wait()
         if let error = errorBox.error {
             throw error
@@ -100,7 +100,16 @@ public struct RunCommand: ParsableCommand {
         Noora().info("Arc Development Server")
         Noora().info("Starting in foreground mode...")
 
-        let currentConfig = try await loadConfig(path: configPath)
+        // Resolve relative paths to absolute paths
+        let resolvedConfigPath: String
+        if (configPath as NSString).isAbsolutePath {
+            resolvedConfigPath = configPath
+        } else {
+            let currentDir = FileManager.default.currentDirectoryPath
+            resolvedConfigPath = (currentDir as NSString).appendingPathComponent(configPath)
+        }
+
+        let currentConfig = try await loadConfig(path: resolvedConfigPath)
 
         // Create process descriptor
         let baseDir = currentConfig.baseDir ?? FileManager.default.currentDirectoryPath
@@ -111,26 +120,32 @@ public struct RunCommand: ParsableCommand {
         let processName = try await generateProcessName(from: currentConfig, manager: manager)
         Noora().info("Process name: \(processName)")
         let descriptor = try await manager.create(
-            name: processName, config: currentConfig, configPath: configPath)
+            name: processName, config: currentConfig, configPath: resolvedConfigPath)
 
-        Noora().success(.alert("Process registered: \(descriptor.name)", takeaways: [
-            "PID: \(descriptor.pid)"
-        ]))
+        Noora().success(
+            .alert(
+                "Process registered: \(descriptor.name)",
+                takeaways: [
+                    "PID: \(descriptor.pid)"
+                ]))
 
         let server = HTTPServer(config: currentConfig)
         let sharedState = SharedState(config: currentConfig)
 
         let watcher = await setupWatcher(
-            configPath: configPath, server: server, sharedState: sharedState, initialConfig: currentConfig)
+            configPath: resolvedConfigPath, server: server, sharedState: sharedState, initialConfig: currentConfig)
 
         try await server.start()
         await startSites(config: currentConfig, state: sharedState)
         await startCloudflared(config: currentConfig, state: sharedState)
         watcher?.start()
 
-        Noora().success(.alert("Server started successfully", takeaways: [
-            "Press Ctrl+C to stop"
-        ]))
+        Noora().success(
+            .alert(
+                "Server started successfully",
+                takeaways: [
+                    "Press Ctrl+C to stop"
+                ]))
 
         defer {
             watcher?.stop()
@@ -152,7 +167,16 @@ public struct RunCommand: ParsableCommand {
         Noora().info("Arc Development Server")
         Noora().info("Starting in background mode...")
 
-        let currentConfig = try await loadConfig(path: configPath)
+        // Resolve relative paths to absolute paths
+        let resolvedConfigPath: String
+        if (configPath as NSString).isAbsolutePath {
+            resolvedConfigPath = configPath
+        } else {
+            let currentDir = FileManager.default.currentDirectoryPath
+            resolvedConfigPath = (currentDir as NSString).appendingPathComponent(configPath)
+        }
+
+        let currentConfig = try await loadConfig(path: resolvedConfigPath)
 
         // Create process descriptor manager
         let baseDir = currentConfig.baseDir ?? FileManager.default.currentDirectoryPath
@@ -176,19 +200,22 @@ public struct RunCommand: ParsableCommand {
 
         // Create process descriptor (writes PID file and JSON descriptor)
         let descriptor = try await manager.create(
-            name: processName, config: currentConfig, configPath: configPath)
+            name: processName, config: currentConfig, configPath: resolvedConfigPath)
 
-        Noora().success(.alert("Background mode initialized", takeaways: [
-            "Process: \(descriptor.name)",
-            "PID: \(descriptor.pid)",
-            "Log file: \(logPath)",
-            "PID file: \(baseDir)/.pid/arc-\(processName).pid"
-        ]))
+        Noora().success(
+            .alert(
+                "Background mode initialized",
+                takeaways: [
+                    "Process: \(descriptor.name)",
+                    "PID: \(descriptor.pid)",
+                    "Log file: \(logPath)",
+                    "PID file: \(baseDir)/.pid/arc-\(processName).pid",
+                ]))
 
         let server = HTTPServer(config: currentConfig)
         let sharedState = SharedState(config: currentConfig)
         let watcher = await setupWatcher(
-            configPath: configPath, server: server, sharedState: sharedState, initialConfig: currentConfig)
+            configPath: resolvedConfigPath, server: server, sharedState: sharedState, initialConfig: currentConfig)
 
         try await server.start()
         await startSites(config: currentConfig, state: sharedState)
@@ -218,16 +245,22 @@ public struct RunCommand: ParsableCommand {
 
         do {
             if let pid = try await state.startCloudflared(config: config) {
-                Noora().success(.alert("Started cloudflared tunnel", takeaways: [
-                    "PID: \(pid)"
-                ]))
+                Noora().success(
+                    .alert(
+                        "Started cloudflared tunnel",
+                        takeaways: [
+                            "PID: \(pid)"
+                        ]))
             }
         } catch let error as CloudflaredConfigError {
             Noora().error(error.errorAlert)
         } catch {
-            Noora().error(.alert("Failed to start cloudflared", takeaways: [
-                "Error: \(error.localizedDescription)"
-            ]))
+            Noora().error(
+                .alert(
+                    "Failed to start cloudflared",
+                    takeaways: [
+                        "Error: \(error.localizedDescription)"
+                    ]))
         }
     }
 
@@ -248,10 +281,11 @@ public struct RunCommand: ParsableCommand {
                     command = cmd
                     args = processConfig.args ?? []
                 } else {
-                    Noora().warning(.alert(
-                        "No process configuration for \(site.name)",
-                        takeaway: "Skipping site startup"
-                    ))
+                    Noora().warning(
+                        .alert(
+                            "No process configuration for \(site.name)",
+                            takeaway: "Skipping site startup"
+                        ))
                     continue
                 }
 
@@ -264,19 +298,28 @@ public struct RunCommand: ParsableCommand {
                         type: .server,
                         env: processConfig.env ?? [:]
                     )
-                    Noora().success(.alert("Started \(site.name)", takeaways: [
-                        "PID: \(pid)"
-                    ]))
+                    Noora().success(
+                        .alert(
+                            "Started \(site.name)",
+                            takeaways: [
+                                "PID: \(pid)"
+                            ]))
                 } catch {
-                    Noora().error(.alert("Failed to start \(site.name)", takeaways: [
-                        "Error: \(error.localizedDescription)"
-                    ]))
+                    Noora().error(
+                        .alert(
+                            "Failed to start \(site.name)",
+                            takeaways: [
+                                "Error: \(error.localizedDescription)"
+                            ]))
                 }
 
             case .static(let staticSite):
-                Noora().info(.alert("Static site \(staticSite.name) ready", takeaways: [
-                    "Path: \(staticSite.outputPath)"
-                ]))
+                Noora().info(
+                    .alert(
+                        "Static site \(staticSite.name) ready",
+                        takeaways: [
+                            "Path: \(staticSite.outputPath)"
+                        ]))
             }
         }
     }
@@ -303,9 +346,12 @@ public struct RunCommand: ParsableCommand {
                         await Self.restartCloudflared(config: newConfig, sharedState: sharedState)
                         Noora().success(.alert("Configuration reloaded"))
                     } catch {
-                        Noora().error(.alert("Failed to reload configuration", takeaways: [
-                            "Error: \(error.localizedDescription)"
-                        ]))
+                        Noora().error(
+                            .alert(
+                                "Failed to reload configuration",
+                                takeaways: [
+                                    "Error: \(error.localizedDescription)"
+                                ]))
                     }
                 }
             )
@@ -363,8 +409,7 @@ public struct RunCommand: ParsableCommand {
         return watcher
     }
 
-    private static func resolvePath(_ path: String, baseDir: String?, workingDir: String? = nil) -> String
-    {
+    private static func resolvePath(_ path: String, baseDir: String?, workingDir: String? = nil) -> String {
         let expanded = (path as NSString).expandingTildeInPath
         if (expanded as NSString).isAbsolutePath {
             return expanded
@@ -388,9 +433,12 @@ public struct RunCommand: ParsableCommand {
     private static func restartCloudflared(config: ArcConfig, sharedState: SharedState) async {
         do {
             if let pid = try await sharedState.restartCloudflared(config: config) {
-                Noora().success(.alert("Restarted cloudflared tunnel", takeaways: [
-                    "PID: \(pid)"
-                ]))
+                Noora().success(
+                    .alert(
+                        "Restarted cloudflared tunnel",
+                        takeaways: [
+                            "PID: \(pid)"
+                        ]))
             } else {
                 // Cloudflared was disabled, ensure it's stopped
                 await sharedState.stopCloudflared()
@@ -398,14 +446,16 @@ public struct RunCommand: ParsableCommand {
         } catch let error as CloudflaredConfigError {
             Noora().error(error.errorAlert)
         } catch {
-            Noora().error(.alert("Failed to restart cloudflared", takeaways: [
-                "Error: \(error.localizedDescription)"
-            ]))
+            Noora().error(
+                .alert(
+                    "Failed to restart cloudflared",
+                    takeaways: [
+                        "Error: \(error.localizedDescription)"
+                    ]))
         }
     }
 
-    private static func restart(site name: String, config appSite: AppSite, sharedState: SharedState) async
-    {
+    private static func restart(site name: String, config appSite: AppSite, sharedState: SharedState) async {
         let processConfig = appSite.process
         let command: String
         let args: [String]
@@ -417,10 +467,11 @@ public struct RunCommand: ParsableCommand {
             command = cmd
             args = processConfig.args ?? []
         } else {
-            Noora().warning(.alert(
-                "No process configuration for \(name)",
-                takeaway: "Skipping restart"
-            ))
+            Noora().warning(
+                .alert(
+                    "No process configuration for \(name)",
+                    takeaway: "Skipping restart"
+                ))
             return
         }
 
@@ -433,20 +484,36 @@ public struct RunCommand: ParsableCommand {
                 type: .server,
                 env: processConfig.env ?? [:]
             )
-            Noora().success(.alert("Restarted \(name)", takeaways: [
-                "PID: \(pid)"
-            ]))
+            Noora().success(
+                .alert(
+                    "Restarted \(name)",
+                    takeaways: [
+                        "PID: \(pid)"
+                    ]))
         } catch {
-            Noora().error(.alert("Failed to restart \(name)", takeaways: [
-                "Error: \(error.localizedDescription)"
-            ]))
+            Noora().error(
+                .alert(
+                    "Failed to restart \(name)",
+                    takeaways: [
+                        "Error: \(error.localizedDescription)"
+                    ]))
         }
     }
 
     private static func loadConfig(path: String) async throws -> ArcConfig {
-        let source = ModuleSource.path(path)
+        // Resolve relative paths to absolute paths
+        let resolvedPath: String
+        if (path as NSString).isAbsolutePath {
+            resolvedPath = path
+        } else {
+            let currentDir = FileManager.default.currentDirectoryPath
+            resolvedPath = (currentDir as NSString).appendingPathComponent(path)
+        }
+        
+        let source = ModuleSource.path(resolvedPath)
+        let configURL = URL(fileURLWithPath: resolvedPath)
         return try await ArcConfig.loadFrom(
-            source: source, configPath: URL(fileURLWithPath: path))
+            source: source, configPath: configURL)
     }
 
     private static func generateProcessName(from config: ArcConfig, manager: ProcessDescriptorManager)
