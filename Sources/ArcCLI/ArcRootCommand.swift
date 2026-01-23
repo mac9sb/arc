@@ -2,10 +2,10 @@ import ArgumentParser
 
 /// Root command for the `arc` tool.
 ///
-/// This is the interface layer (argument parsing + command routing). 
+/// This is the interface layer (argument parsing + command routing).
 public struct ArcRootCommand: ParsableCommand {
     public init() {}
-    
+
     public static let configuration = CommandConfiguration(
         commandName: "arc",
         abstract: "Arc - Server Management Tool",

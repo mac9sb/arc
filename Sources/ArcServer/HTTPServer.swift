@@ -1,9 +1,9 @@
 import ArcCore
 import Foundation
-import Noora
 import NIO
-import NIOPosix
 import NIOHTTP1
+import NIOPosix
+import Noora
 
 /// Lightweight HTTP server that handles static sites and app proxying.
 ///
@@ -14,7 +14,7 @@ public final class HTTPServer: @unchecked Sendable {
     private var config: ArcConfig
     private var staticHandler: StaticFileHandler
     private var proxyHandler: ProxyHandler
-    
+
     /// Creates a new HTTP server.
     ///
     /// - Parameter config: The Arc configuration to use.
@@ -43,7 +43,7 @@ public final class HTTPServer: @unchecked Sendable {
 
         let channel = try await bootstrap.bind(host: "0.0.0.0", port: Int(config.proxyPort)).get()
         self.serverChannel = channel
-        
+
         Noora().success("HTTP server listening on port \(config.proxyPort)")
     }
 
@@ -54,7 +54,7 @@ public final class HTTPServer: @unchecked Sendable {
         }
         serverChannel = nil
     }
-    
+
     deinit {
         try? eventLoopGroup.syncShutdownGracefully()
     }
@@ -100,30 +100,30 @@ private struct ContextRef: @unchecked Sendable {
 private final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
     typealias InboundIn = HTTPServerRequestPart
     typealias OutboundOut = HTTPServerResponsePart
-    
+
     private let server: HTTPServer
     private var requestBuffer: Data = Data()
     private var currentRequest: HTTPRequest?
-    
+
     init(server: HTTPServer) {
         self.server = server
     }
-    
+
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let requestPart = unwrapInboundIn(data)
-        
+
         switch requestPart {
         case .head(let head):
             var headers: [String: String] = [:]
             for (name, value) in head.headers {
                 headers[name.lowercased()] = value
             }
-            
+
             // Reconstruct Host header with proper casing
             if let host = head.headers["host"].first {
                 headers["host"] = host
             }
-            
+
             currentRequest = HTTPRequest(
                 method: head.method.rawValue,
                 path: head.uri,
@@ -131,7 +131,7 @@ private final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
                 body: Data()
             )
             requestBuffer = Data()
-            
+
         case .body(let buffer):
             if let request = currentRequest {
                 var body = request.body
@@ -146,13 +146,13 @@ private final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
                     body: body
                 )
             }
-            
+
         case .end:
             guard let request = currentRequest else {
                 sendError(context: context, status: 400, reason: "Bad Request")
                 return
             }
-            
+
             let serverRef = self.server
             let handler = self
             let eventLoop = context.eventLoop
@@ -168,16 +168,16 @@ private final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
             requestBuffer = Data()
         }
     }
-    
+
     func channelReadComplete(context: ChannelHandlerContext) {
         context.flush()
     }
-    
+
     func errorCaught(context: ChannelHandlerContext, error: Error) {
         Noora().error("Connection error: \(error.localizedDescription)")
         context.close(promise: nil)
     }
-    
+
     /// Helper method to handle async request routing and response sending.
     /// Marked nonisolated to allow capturing non-Sendable context in Task.
     /// Safe because we ensure the context is only used on its event loop.
@@ -199,7 +199,7 @@ private final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
             }
         }
     }
-    
+
     nonisolated private func sendResponse(context: ChannelHandlerContext, response: HTTPResponse) {
         var headers = HTTPHeaders()
         for (key, value) in response.headers {
@@ -207,24 +207,24 @@ private final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
         }
         headers.add(name: "Content-Length", value: "\(response.body.count)")
         headers.add(name: "Connection", value: "close")
-        
+
         let head = HTTPResponseHead(
             version: .http1_1,
             status: HTTPResponseStatus(statusCode: response.statusCode, reasonPhrase: response.reason),
             headers: headers
         )
-        
+
         context.write(wrapOutboundOut(.head(head)), promise: nil)
-        
+
         if !response.body.isEmpty {
             var buffer = context.channel.allocator.buffer(capacity: response.body.count)
             buffer.writeBytes(response.body)
             context.write(wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
         }
-        
+
         context.writeAndFlush(wrapOutboundOut(.end(nil)), promise: nil)
     }
-    
+
     private func sendError(context: ChannelHandlerContext, status: Int, reason: String) {
         let head = HTTPResponseHead(
             version: .http1_1,

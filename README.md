@@ -40,6 +40,9 @@ arc init
 
 This creates the necessary directory structure and example files.
 
+> [!NOTE]
+> If your applications and static sites are in separate git repositories, it's recommended to add them as submodules using `git submodule add <repository-url> <path>` rather than committing them directly. This keeps your project structure clean and allows you to track specific versions of each component.
+
 ### Configure Your Sites
 
 Edit `pkl/config.pkl` to add your static sites and applications. Arc uses Pkl (Programmable Configuration Language) for configuration.

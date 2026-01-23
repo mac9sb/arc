@@ -78,7 +78,7 @@ public struct LogsCommand: ParsableCommand {
             let currentDir = FileManager.default.currentDirectoryPath
             resolvedPath = (currentDir as NSString).appendingPathComponent(configPath)
         }
-        
+
         let configURL = URL(fileURLWithPath: resolvedPath)
 
         guard

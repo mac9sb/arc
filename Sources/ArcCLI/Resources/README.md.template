@@ -1,49 +1,61 @@
 # {{PROJECT_NAME}}
 
-An arc project with example applications.
+An arc project for hosting applications and static sites.
 
-## Project Structure
+## Directory Structure
 
-- `apps/example-api/` - Example Hummingbird API application with WebUI
-- `static/example-site/` - Example static site built with WebUI
-- `config.pkl` - Arc server configuration
+### `apps/`
 
-## Getting Started
+Server applications built with Swift and Hummingbird. Each subdirectory is a standalone application with its own `Package.swift`.
 
-### 1. Build the Example API
+> [!NOTE]
+> If your applications are in separate git repositories, it's recommended to add them as submodules using `git submodule add <repository-url> apps/<app-name>` rather than committing them directly. This keeps your project structure clean and allows you to track specific versions of each application.
+
+**Working with apps:**
 
 ```bash
-cd apps/example-api
+cd apps/<app-name>
 swift build -c release
 ```
 
-### 2. Build the Example Static Site
+Apps are configured in `config.pkl` with `kind = "app"` and require a port assignment.
+
+### `static/`
+
+Static sites built with Swift and WebUI. Each subdirectory is a standalone site generator with its own `Package.swift`.
+
+> [!NOTE]
+> If your static sites are in separate git repositories, it's recommended to add them as submodules using `git submodule add <repository-url> static/<site-name>` rather than committing them directly. This keeps your project structure clean and allows you to track specific versions of each site.
+
+**Working with static sites:**
 
 ```bash
-cd static/example-site
-swift run ExampleSite
+cd static/<site-name>
+swift run
 ```
 
-This will generate the static site in the `.output` directory.
+This generates the site into a `.output` directory. Sites are configured in `config.pkl` with `kind = "static"`.
 
-### 3. Start the Arc Server
+### `config.pkl`
+
+Arc server configuration defining all hosted sites and services. See `pkl/ArcConfiguration.pkl` for the schema.
+
+## Running the Server
 
 ```bash
-arc run
+arc run              # Start in foreground
+arc run --background # Start in background
+arc status           # Check running processes and site health
+arc logs             # View logs
+arc stop             # Stop running servers
 ```
 
-The server will start on port 8080 and proxy requests to:
-- `example-api.localhost:8080` -> Example API (port 8000)
-- `example-site.localhost:8080` -> Example static site
+The server proxies requests based on domain configuration in `config.pkl`.
 
-## Configuration
+## File Watching
 
-Edit `config.pkl` to add or modify sites. See `pkl/ArcConfiguration.pkl` for the configuration schema.
+Arc automatically watches for changes and reloads as needed:
 
-## Development
-
-- Use `arc run` to start the server in foreground mode
-- Use `arc run --background` to start in background mode
-- Use `arc status` to check running processes and site health
-- Use `arc logs` to view logs
-- Use `arc stop` to stop running servers
+- **Config changes** — Modifications to `config.pkl` trigger a full configuration reload
+- **App binaries** — Rebuilt executables in `apps/` are detected and the corresponding process is restarted
+- **Static outputs** — Regenerated `.output` directories in `static/` are picked up immediately

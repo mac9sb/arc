@@ -509,7 +509,7 @@ public struct RunCommand: ParsableCommand {
             let currentDir = FileManager.default.currentDirectoryPath
             resolvedPath = (currentDir as NSString).appendingPathComponent(path)
         }
-        
+
         let source = ModuleSource.path(resolvedPath)
         let configURL = URL(fileURLWithPath: resolvedPath)
         return try await ArcConfig.loadFrom(

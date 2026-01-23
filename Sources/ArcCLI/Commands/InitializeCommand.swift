@@ -4,7 +4,7 @@ import Noora
 
 public struct InitializeCommand: ParsableCommand {
     public init() {}
-    
+
     public static let configuration = CommandConfiguration(
         commandName: "init",
         abstract: "Initialize a new arc project"

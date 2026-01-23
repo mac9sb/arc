@@ -19,7 +19,7 @@ public enum CloudflaredConfigError: Error, Equatable {
                     "Or download from: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/",
                     "Login to Cloudflare: \(.command("cloudflared tunnel login"))",
                     "Create a new tunnel: \(.command("cloudflared tunnel create <tunnel-name>"))",
-                    "Copy the tunnel UUID and add it to your config.pkl or set \(.accent("CLOUDFLARE_TUNNEL_UUID")) environment variable"
+                    "Copy the tunnel UUID and add it to your config.pkl or set \(.accent("CLOUDFLARE_TUNNEL_UUID")) environment variable",
                 ]
             )
         case .noSitesConfigured:
@@ -27,7 +27,7 @@ public enum CloudflaredConfigError: Error, Equatable {
                 "No sites with domains configured",
                 takeaways: [
                     "Cannot generate cloudflared ingress rules without site domains",
-                    "Add at least one site with a domain to your config.pkl"
+                    "Add at least one site with a domain to your config.pkl",
                 ]
             )
         case .sshDomainRequired:
@@ -38,7 +38,7 @@ public enum CloudflaredConfigError: Error, Equatable {
                     "ssh {",
                     "  enabled = true",
                     "  domain = \"ssh.maclong.dev\"",
-                    "}"
+                    "}",
                 ]
             )
         case .configWriteFailed(let message):
@@ -46,7 +46,7 @@ public enum CloudflaredConfigError: Error, Equatable {
                 "Failed to write cloudflared config file",
                 takeaways: [
                     "Error: \(message)",
-                    "Ensure the config directory exists and is writable"
+                    "Ensure the config directory exists and is writable",
                 ]
             )
         }
@@ -164,6 +164,6 @@ public struct CloudflaredConfigGenerator {
     /// - Parameter path: The path to expand.
     /// - Returns: The expanded absolute path.
     private static func expandPath(_ path: String) -> String {
-        return (path as NSString).expandingTildeInPath
+        (path as NSString).expandingTildeInPath
     }
 }

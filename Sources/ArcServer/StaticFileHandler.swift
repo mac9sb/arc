@@ -14,140 +14,138 @@ import UniformTypeIdentifiers
 /// let response = handler.handle(request: httpRequest, site: staticSite, baseDir: baseDir)
 /// ```
 struct StaticFileHandler {
-  private let config: ArcConfig
+    private let config: ArcConfig
 
-  /// Creates a new static file handler.
-  ///
-  /// - Parameter config: The Arc configuration containing site definitions.
-  init(config: ArcConfig) {
-    self.config = config
-  }
+    /// Creates a new static file handler.
+    ///
+    /// - Parameter config: The Arc configuration containing site definitions.
+    init(config: ArcConfig) {
+        self.config = config
+    }
 
-  func handle(request: HTTPRequest, site: StaticSite, baseDir: String?) -> HTTPResponse {
-    let resolvedBase = resolvePath(site.outputPath, baseDir: baseDir)
-    let sanitizedPath = sanitize(path: request.path)
-    let fullPath = URL(fileURLWithPath: resolvedBase).appendingPathComponent(sanitizedPath).path
+    func handle(request: HTTPRequest, site: StaticSite, baseDir: String?) -> HTTPResponse {
+        let resolvedBase = resolvePath(site.outputPath, baseDir: baseDir)
+        let sanitizedPath = sanitize(path: request.path)
+        let fullPath = URL(fileURLWithPath: resolvedBase).appendingPathComponent(sanitizedPath).path
 
-    var isDir: ObjCBool = false
-    if FileManager.default.fileExists(atPath: fullPath, isDirectory: &isDir) {
-      if isDir.boolValue {
-        // Try index.html first
-        let indexPath = (fullPath as NSString).appendingPathComponent("index.html")
-        if FileManager.default.fileExists(atPath: indexPath) {
-          return serveFile(at: indexPath)
+        var isDir: ObjCBool = false
+        if FileManager.default.fileExists(atPath: fullPath, isDirectory: &isDir) {
+            guard isDir.boolValue else {
+                return serveFile(at: fullPath)
+            }
+            // Try index.html first
+            let indexPath = (fullPath as NSString).appendingPathComponent("index.html")
+            if FileManager.default.fileExists(atPath: indexPath) {
+                return serveFile(at: indexPath)
+            }
+            return directoryListing(at: fullPath, requestPath: sanitizedPath)
         }
-        return directoryListing(at: fullPath, requestPath: sanitizedPath)
-      } else {
-        return serveFile(at: fullPath)
-      }
+
+        return HTTPResponse(
+            status: 404,
+            reason: "Not Found",
+            headers: ["Content-Type": "text/plain"],
+            body: Data("Not Found".utf8)
+        )
     }
 
-    return HTTPResponse(
-      status: 404,
-      reason: "Not Found",
-      headers: ["Content-Type": "text/plain"],
-      body: Data("Not Found".utf8)
-    )
-  }
+    private func serveFile(at path: String) -> HTTPResponse {
+        guard let data = FileManager.default.contents(atPath: path) else {
+            return HTTPResponse(
+                status: 500,
+                reason: "Server Error",
+                headers: ["Content-Type": "text/plain"],
+                body: Data("Failed to read file".utf8)
+            )
+        }
 
-  private func serveFile(at path: String) -> HTTPResponse {
-    guard let data = FileManager.default.contents(atPath: path) else {
-      return HTTPResponse(
-        status: 500,
-        reason: "Server Error",
-        headers: ["Content-Type": "text/plain"],
-        body: Data("Failed to read file".utf8)
-      )
+        let mimeType = mimeTypeFor(path: path)
+        return HTTPResponse(
+            status: 200,
+            reason: "OK",
+            headers: ["Content-Type": mimeType],
+            body: data
+        )
     }
 
-    let mimeType = mimeTypeFor(path: path)
-    return HTTPResponse(
-      status: 200,
-      reason: "OK",
-      headers: ["Content-Type": mimeType],
-      body: data
-    )
-  }
+    private func directoryListing(at path: String, requestPath: String) -> HTTPResponse {
+        guard let entries = try? FileManager.default.contentsOfDirectory(atPath: path) else {
+            return HTTPResponse(status: 403, reason: "Forbidden", headers: [:], body: Data())
+        }
 
-  private func directoryListing(at path: String, requestPath: String) -> HTTPResponse {
-    guard let entries = try? FileManager.default.contentsOfDirectory(atPath: path) else {
-      return HTTPResponse(status: 403, reason: "Forbidden", headers: [:], body: Data())
+        let listItems = entries.sorted().map { entry -> String in
+            let href = requestPath.hasSuffix("/") ? requestPath + entry : requestPath + "/" + entry
+            return "<li><a href=\"\(href)\">\(entry)</a></li>"
+        }.joined(separator: "\n")
+
+        let html = """
+            <html>
+              <head><title>Index of /\(requestPath)</title></head>
+              <body>
+                <h1>Index of /\(requestPath)</h1>
+                <ul>\(listItems)</ul>
+              </body>
+            </html>
+            """
+
+        return HTTPResponse(
+            status: 200,
+            reason: "OK",
+            headers: ["Content-Type": "text/html; charset=utf-8"],
+            body: Data(html.utf8)
+        )
     }
 
-    let listItems = entries.sorted().map { entry -> String in
-      let href = requestPath.hasSuffix("/") ? requestPath + entry : requestPath + "/" + entry
-      return "<li><a href=\"\(href)\">\(entry)</a></li>"
-    }.joined(separator: "\n")
-
-    let html = """
-      <html>
-        <head><title>Index of /\(requestPath)</title></head>
-        <body>
-          <h1>Index of /\(requestPath)</h1>
-          <ul>\(listItems)</ul>
-        </body>
-      </html>
-      """
-
-    return HTTPResponse(
-      status: 200,
-      reason: "OK",
-      headers: ["Content-Type": "text/html; charset=utf-8"],
-      body: Data(html.utf8)
-    )
-  }
-
-  private func sanitize(path: String) -> String {
-    let trimmed = path.split(separator: "?").first.map(String.init) ?? path
-    let components = trimmed.split(separator: "/").filter { $0 != ".." }
-    let rebuilt = components.joined(separator: "/")
-    return rebuilt.isEmpty ? "." : rebuilt
-  }
-
-  private func resolvePath(_ path: String, baseDir: String?) -> String {
-    let expanded = (path as NSString).expandingTildeInPath
-    if (expanded as NSString).isAbsolutePath {
-      return expanded
+    private func sanitize(path: String) -> String {
+        let trimmed = path.split(separator: "?").first.map(String.init) ?? path
+        let components = trimmed.split(separator: "/").filter { $0 != ".." }
+        let rebuilt = components.joined(separator: "/")
+        return rebuilt.isEmpty ? "." : rebuilt
     }
-    if let baseDir {
-      return (baseDir as NSString).appendingPathComponent(expanded)
-    }
-    return expanded
-  }
 
-  private func mimeTypeFor(path: String) -> String {
-    let ext = (path as NSString).pathExtension.lowercased()
-    
-    if let type = UTType(filenameExtension: ext)?.preferredMIMEType {
-      return type
+    private func resolvePath(_ path: String, baseDir: String?) -> String {
+        let expanded = (path as NSString).expandingTildeInPath
+        if (expanded as NSString).isAbsolutePath {
+            return expanded
+        }
+        if let baseDir {
+            return (baseDir as NSString).appendingPathComponent(expanded)
+        }
+        return expanded
     }
-    
-    // Fallback MIME type mapping
-    let mimeTypes: [String: String] = [
-      "html": "text/html",
-      "htm": "text/html",
-      "css": "text/css",
-      "js": "application/javascript",
-      "json": "application/json",
-      "png": "image/png",
-      "jpg": "image/jpeg",
-      "jpeg": "image/jpeg",
-      "gif": "image/gif",
-      "svg": "image/svg+xml",
-      "webp": "image/webp",
-      "ico": "image/x-icon",
-      "pdf": "application/pdf",
-      "txt": "text/plain",
-      "xml": "application/xml",
-      "zip": "application/zip",
-      "woff": "font/woff",
-      "woff2": "font/woff2",
-      "ttf": "font/ttf",
-      "otf": "font/otf",
-      "eot": "application/vnd.ms-fontobject",
-    ]
-    
-    return mimeTypes[ext] ?? "application/octet-stream"
-  }
+
+    private func mimeTypeFor(path: String) -> String {
+        let ext = (path as NSString).pathExtension.lowercased()
+
+        if let type = UTType(filenameExtension: ext)?.preferredMIMEType {
+            return type
+        }
+
+        // Fallback MIME type mapping
+        let mimeTypes: [String: String] = [
+            "html": "text/html",
+            "htm": "text/html",
+            "css": "text/css",
+            "js": "application/javascript",
+            "json": "application/json",
+            "png": "image/png",
+            "jpg": "image/jpeg",
+            "jpeg": "image/jpeg",
+            "gif": "image/gif",
+            "svg": "image/svg+xml",
+            "webp": "image/webp",
+            "ico": "image/x-icon",
+            "pdf": "application/pdf",
+            "txt": "text/plain",
+            "xml": "application/xml",
+            "zip": "application/zip",
+            "woff": "font/woff",
+            "woff2": "font/woff2",
+            "ttf": "font/ttf",
+            "otf": "font/otf",
+            "eot": "application/vnd.ms-fontobject",
+        ]
+
+        return mimeTypes[ext] ?? "application/octet-stream"
+    }
 }
-
