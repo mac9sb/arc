@@ -12,6 +12,10 @@ Arc simplifies local development by providing:
 - **Cloudflare Tunnel Integration**: Expose local services via Cloudflare tunnels
 - **Health Monitoring**: Track the status of all your services
 
+## Production Example
+
+For a real-world production example of Arc in use, see the [server](https://github.com/mac9sb/server) repository, which demonstrates a complete setup with multiple static sites and dynamic applications.
+
 ## Getting Started
 
 ### Installation
