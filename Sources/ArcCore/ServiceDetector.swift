@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 /// Portable service detection using PID and lock files.
@@ -230,5 +231,59 @@ public struct ServiceDetector {
         } catch {
             return nil
         }
+    }
+
+    /// Gets PIDs of processes whose command line matches a pattern (pgrep -f).
+    ///
+    /// - Parameter pattern: Pattern to match against full command line.
+    /// - Returns: Array of matching PIDs.
+    public static func getPIDsMatching(pattern: String) -> [pid_t] {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
+        task.arguments = ["-f", pattern]
+
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = Pipe()
+
+        do {
+            try task.run()
+            task.waitUntilExit()
+            guard task.terminationStatus == 0 else { return [] }
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            return output
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .split(separator: "\n")
+                .compactMap { Int32($0.trimmingCharacters(in: .whitespaces)) }
+        } catch {
+            return []
+        }
+    }
+
+    /// Sends SIGTERM, waits, then SIGKILL if the process is still running.
+    ///
+    /// - Parameters:
+    ///   - pid: Process ID.
+    ///   - waitSeconds: Seconds to wait for graceful exit before SIGKILL.
+    public static func killProcessGracefully(pid: pid_t, waitSeconds: Double = 2) {
+        _ = killProcess(pid: pid, signal: .term)
+        Thread.sleep(forTimeInterval: waitSeconds)
+        guard isProcessRunning(pid: pid) else { return }
+        _ = killProcess(pid: pid, signal: .kill)
+    }
+
+    /// Sends SIGTERM to the process group, waits, then SIGKILL if the group leader is still running.
+    /// Use when the process was started with setpgid(pid, pid) so it leads its own group.
+    ///
+    /// - Parameters:
+    ///   - pgid: Process group ID (same as leader PID when using setpgid(pid, pid)).
+    ///   - waitSeconds: Seconds to wait before SIGKILL.
+    public static func killProcessGroupGracefully(pgid: pid_t, waitSeconds: Double = 2) {
+        _ = kill(-pgid, SIGTERM)
+        Thread.sleep(forTimeInterval: waitSeconds)
+        guard isProcessRunning(pid: pgid) else { return }
+        _ = kill(-pgid, SIGKILL)
     }
 }

@@ -143,7 +143,9 @@ public actor ProcessDescriptorManager {
         }
 
         let data = try Data(contentsOf: path)
-        return try JSONDecoder().decode(ProcessDescriptor.self, from: data)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(ProcessDescriptor.self, from: data)
     }
 
     /// Reads a descriptor by PID.
@@ -174,7 +176,9 @@ public actor ProcessDescriptorManager {
             if file.pathExtension == "json", file.lastPathComponent.hasPrefix("arc-") {
                 do {
                     let data = try Data(contentsOf: file)
-                    let descriptor = try JSONDecoder().decode(ProcessDescriptor.self, from: data)
+                    let decoder = JSONDecoder()
+                    decoder.dateDecodingStrategy = .iso8601
+                    let descriptor = try decoder.decode(ProcessDescriptor.self, from: data)
                     descriptors.append(descriptor)
                 } catch {
                     // Skip invalid files
@@ -206,18 +210,30 @@ public actor ProcessDescriptorManager {
     ///
     /// - Parameter pid: The process ID.
     /// - Returns: Resource usage information, or nil if the process doesn't exist.
-    public func getResourceUsage(pid: pid_t) -> ProcessResourceUsage? {
+    nonisolated public func getResourceUsage(pid: pid_t) -> ProcessResourceUsage? {
+        // First check if process is running to avoid unnecessary work
+        guard ServiceDetector.isProcessRunning(pid: pid) else {
+            return nil
+        }
+        
         // Use ps to get process information
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/bin/ps")
         task.arguments = ["-p", String(pid), "-o", "pid,%cpu,rss,command"]
 
         let pipe = Pipe()
+        let errorPipe = Pipe()
         task.standardOutput = pipe
+        task.standardError = errorPipe
 
         do {
             try task.run()
             task.waitUntilExit()
+            
+            // If ps failed, return nil
+            guard task.terminationStatus == 0 else {
+                return nil
+            }
 
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             let output = String(data: data, encoding: .utf8) ?? ""
@@ -229,12 +245,14 @@ public actor ProcessDescriptorManager {
             let parts = lines[1].components(separatedBy: .whitespaces).filter { !$0.isEmpty }
             guard parts.count >= 3 else { return nil }
 
-            guard let pid = pid_t(parts[0]),
+            guard let pidInt = Int32(parts[0]),
                 let cpuPercent = Double(parts[1]),
                 let rssKb = Int(parts[2])
             else {
                 return nil
             }
+            
+            let pid = pid_t(pidInt)
 
             // Command is the rest of the line
             let command = parts.dropFirst(3).joined(separator: " ")
@@ -249,6 +267,46 @@ public actor ProcessDescriptorManager {
             )
         } catch {
             return nil
+        }
+    }
+
+    /// Gets child processes of a parent process.
+    ///
+    /// - Parameter parentPid: The parent process ID.
+    /// - Returns: Array of child process PIDs.
+    nonisolated public static func getChildProcesses(parentPid: pid_t) -> [pid_t] {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/ps")
+        task.arguments = ["-o", "pid", "-ppid", String(parentPid)]
+
+        let pipe = Pipe()
+        let errorPipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = errorPipe
+
+        do {
+            try task.run()
+            task.waitUntilExit()
+
+            guard task.terminationStatus == 0 else {
+                return []
+            }
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+
+            // Parse output (skip header line "PID")
+            let lines = output.components(separatedBy: "\n").filter { !$0.isEmpty }
+            var childPids: [pid_t] = []
+            for line in lines.dropFirst() { // Skip header
+                let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                if let pidInt = Int32(trimmed) {
+                    childPids.append(pid_t(pidInt))
+                }
+            }
+            return childPids
+        } catch {
+            return []
         }
     }
 

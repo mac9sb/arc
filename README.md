@@ -22,7 +22,7 @@ For a real-world production example of Arc in use, see the [server](https://gith
 
 Build Arc from source:
 
-```bash
+```sh
 git clone https://github.com/mac9sb/arc.git
 cd arc
 swift build -c release
@@ -34,7 +34,7 @@ Or download a pre-built binary from the [releases page](https://github.com/mac9s
 
 Create a new Arc project in your current directory:
 
-```bash
+```sh
 arc init
 ```
 
@@ -45,7 +45,7 @@ This creates the necessary directory structure and example files.
 
 ### Configure Your Sites
 
-Edit `pkl/config.pkl` to add your static sites and applications. Arc uses Pkl (Programmable Configuration Language) for configuration.
+Edit `config.pkl` to add your static sites and applications. Arc uses Pkl (Programmable Configuration Language) for configuration.
 
 See the [Pkl Configuration Documentation](https://mac9sb.github.io/arc/) for the complete configuration schema.
 
@@ -78,14 +78,14 @@ sites {
 
 Run Arc in foreground mode:
 
-```bash
-arc run
+```sh
+arc start
 ```
 
 Or run in background:
 
-```bash
-arc run --background
+```sh
+arc start --background
 ```
 
 The server will start on port 8080 (default) and proxy requests to your configured sites.
@@ -101,7 +101,7 @@ Arc consists of several modules:
 ## Commands
 
 - `arc init` - Initialize a new Arc project
-- `arc run` - Start the Arc server
+- `arc start` - Start the Arc server
 - `arc stop` - Stop running Arc servers
 - `arc status` - Check the status of running servers
 - `arc logs` - View server logs

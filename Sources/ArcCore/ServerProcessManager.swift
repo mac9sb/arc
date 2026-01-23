@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 /// Arc-specific errors.
@@ -5,6 +6,7 @@ public enum ArcError: Error, LocalizedError {
     case processFailed(command: String, exitCode: Int)
     case configLoadFailed(String)
     case invalidConfiguration(String)
+    case processStartupFailed(name: String, message: String, logPath: String)
 
     public var errorDescription: String? {
         switch self {
@@ -14,6 +16,8 @@ public enum ArcError: Error, LocalizedError {
             return "Failed to load config: \(message)"
         case .invalidConfiguration(let message):
             return "Invalid configuration: \(message)"
+        case .processStartupFailed(let name, let message, let logPath):
+            return "Process '\(name)' failed to start: \(message)\nCheck logs at: \(logPath)"
         }
     }
 }
@@ -38,8 +42,12 @@ public class ServerProcessManager {
         /// When the process was started.
         public let startedAt: Date
 
+        /// Whether the process was placed in its own process group (setpgid).
+        /// When true, we kill the group via kill(-pid) to also stop child processes.
+        public let useProcessGroup: Bool
+
         /// The type of process being managed.
-        public enum ProcessType {
+        public enum ProcessType: Sendable {
             /// A server process.
             case server
             /// A static site process.
@@ -60,7 +68,7 @@ public class ServerProcessManager {
     /// - Parameter config: The Arc configuration to use.
     public init(config: ArcConfig) {
         self.config = config
-        self.logDir = config.logDir
+        self.logDir = (config.logDir as NSString).expandingTildeInPath
     }
 
     /// Starts a process for a site or main server.
@@ -82,7 +90,7 @@ public class ServerProcessManager {
         workingDir: String? = nil,
         type: ProcessRecord.ProcessType,
         env: [String: String] = [:]
-    ) throws -> pid_t {
+    ) async throws -> pid_t {
         let task = Process()
 
         // Resolve working directory
@@ -93,8 +101,8 @@ public class ServerProcessManager {
             resolvedWorkingDir = config.baseDir ?? FileManager.default.currentDirectoryPath
         }
 
-        // Resolve executable path
-        let resolvedCommand = resolvePath(command)
+        // Resolve executable path relative to workingDir if provided, otherwise baseDir
+        let resolvedCommand = resolveCommandPath(command, workingDir: resolvedWorkingDir)
 
         task.executableURL = URL(fileURLWithPath: resolvedCommand)
         task.arguments = args
@@ -109,27 +117,71 @@ public class ServerProcessManager {
 
         // Set up log redirection
         let logPath = "\(logDir)/\(name).log"
-        ensureLogDirectoryExists()
+        do {
+            try ensureLogDirectoryExists()
+        } catch {
+            throw ArcError.invalidConfiguration(
+                "Failed to create log directory at \(logDir): \(error.localizedDescription). " +
+                "Ensure the directory exists and is writable, or change logDir in config.pkl to a user-writable location.")
+        }
 
         let logFileURL = URL(fileURLWithPath: logPath)
-        task.standardOutput = try? FileHandle(forWritingTo: logFileURL)
-        task.standardError = try? FileHandle(forWritingTo: logFileURL)
+        
+        // Create log file if it doesn't exist
+        if !FileManager.default.fileExists(atPath: logPath) {
+            guard FileManager.default.createFile(atPath: logPath, contents: nil, attributes: nil) else {
+                throw ArcError.invalidConfiguration(
+                    "Failed to create log file at \(logPath). Ensure the log directory is writable.")
+            }
+        }
+        
+        guard let outputHandle = try? FileHandle(forWritingTo: logFileURL),
+              let errorHandle = try? FileHandle(forWritingTo: logFileURL) else {
+            throw ArcError.invalidConfiguration(
+                "Failed to open log file at \(logPath) for writing. Ensure the file is writable.")
+        }
+        
+        task.standardOutput = outputHandle
+        task.standardError = errorHandle
 
         try task.run()
 
         let pid = pid_t(task.processIdentifier)
+        let useProcessGroup = (setpgid(pid, pid) == 0)
         processes[name] = ProcessRecord(
             pid: pid,
             name: name,
             type: type,
-            startedAt: Date()
+            startedAt: Date(),
+            useProcessGroup: useProcessGroup
         )
+
+        // Verify process is still running after a short delay
+        // This catches immediate crashes (like missing env vars)
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        guard ServiceDetector.isProcessRunning(pid: pid) else {
+            // Process exited immediately - read error log
+            var errorMessage = "Process exited immediately after startup"
+            if let logContents = try? String(contentsOfFile: logPath, encoding: .utf8),
+               !logContents.isEmpty {
+                // Get last few lines of log for context
+                let lines = logContents.components(separatedBy: .newlines)
+                let lastLines = lines.suffix(5).joined(separator: "\n")
+                if !lastLines.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    errorMessage += "\nLast log output:\n\(lastLines)"
+                }
+            }
+            processes.removeValue(forKey: name)
+            throw ArcError.processStartupFailed(name: name, message: errorMessage, logPath: logPath)
+        }
 
         return pid
     }
 
     /// Stops a running process by name.
     ///
+    /// Sends SIGTERM, waits 2 seconds, then SIGKILL if still running.
     /// - Parameter name: The name of the process to stop.
     /// - Returns: `true` if the process was found and stopped, `false` otherwise.
     @discardableResult
@@ -138,12 +190,14 @@ public class ServerProcessManager {
             return false
         }
 
-        let success = ServiceDetector.killProcess(pid: record.pid, signal: .term)
-        if success {
-            processes.removeValue(forKey: name)
+        let pid = record.pid
+        processes.removeValue(forKey: name)
+        if record.useProcessGroup {
+            ServiceDetector.killProcessGroupGracefully(pgid: pid, waitSeconds: 2)
+        } else {
+            ServiceDetector.killProcessGracefully(pid: pid, waitSeconds: 2)
         }
-
-        return success
+        return true
     }
 
     /// Stops all managed processes.
@@ -203,10 +257,10 @@ public class ServerProcessManager {
         workingDir: String? = nil,
         type: ProcessRecord.ProcessType,
         env: [String: String] = [:]
-    ) throws -> pid_t {
+    ) async throws -> pid_t {
         stopProcess(name: name)
-        Thread.sleep(forTimeInterval: 0.5)
-        return try startProcess(
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        return try await startProcess(
             name: name,
             command: command,
             args: args,
@@ -284,11 +338,24 @@ public class ServerProcessManager {
         return "\(baseDir)/\(path)"
     }
 
+    /// Resolves a command/executable path relative to workingDir if provided, otherwise baseDir.
+    private func resolveCommandPath(_ command: String, workingDir: String) -> String {
+        let expandedCommand = (command as NSString).expandingTildeInPath
+
+        // If absolute path, use as-is
+        if (expandedCommand as NSString).isAbsolutePath {
+            return expandedCommand
+        }
+
+        // If relative path, resolve relative to workingDir (which is already resolved to absolute path)
+        return (workingDir as NSString).appendingPathComponent(expandedCommand)
+    }
+
     /// Ensures log directory exists.
-    private func ensureLogDirectoryExists() {
+    private func ensureLogDirectoryExists() throws {
         let fileManager = FileManager.default
         if !fileManager.fileExists(atPath: logDir) {
-            try? fileManager.createDirectory(
+            try fileManager.createDirectory(
                 atPath: logDir,
                 withIntermediateDirectories: true
             )

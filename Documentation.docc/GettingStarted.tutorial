@@ -11,7 +11,7 @@ Learn how to set up and use Arc for local development.
         @ContentAndMedia {
             Install Arc using Swift Package Manager or download a pre-built binary.
 
-            ```bash
+            ```sh
             git clone <repository-url>
             cd arc
             swift build -c release
@@ -25,7 +25,7 @@ Learn how to set up and use Arc for local development.
         @ContentAndMedia {
             Create a new Arc project in your current directory:
 
-            ```bash
+            ```sh
             arc init
             ```
 
@@ -35,7 +35,7 @@ Learn how to set up and use Arc for local development.
 
     @Section(title: "Configure Your Sites") {
         @ContentAndMedia {
-            Edit `pkl/config.pkl` to add your static sites and applications:
+            Edit `config.pkl` to add your static sites and applications:
 
             ```pkl
             sites {
@@ -53,14 +53,14 @@ Learn how to set up and use Arc for local development.
         @ContentAndMedia {
             Run Arc in foreground mode:
 
-            ```bash
-            arc run
+            ```sh
+            arc start
             ```
 
             Or run in background:
 
-            ```bash
-            arc run --background
+            ```sh
+            arc start --background
             ```
         }
     }

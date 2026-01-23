@@ -6,7 +6,7 @@ Reference for all Arc command-line commands.
 
 Initialize a new Arc project.
 
-```bash
+```sh
 arc init [project-name] [--directory <path>]
 ```
 
@@ -20,37 +20,37 @@ arc init [project-name] [--directory <path>]
 
 ### Example
 
-```bash
+```sh
 arc init my-project
 arc init --directory ~/projects/my-project
 ```
 
-## run
+## start
 
 Start the Arc server.
 
-```bash
-arc run [--config <path>] [--background] [--log-file <path>]
+```sh
+arc start [--config <path>] [--background] [--log-file <path>]
 ```
 
 ### Options
 
-- `--config`, `-c`: Path to the configuration file. Defaults to `pkl/config.pkl`.
+- `--config`, `-c`: Path to the configuration file. Defaults to `config.pkl`.
 - `--background`: Run the server in background mode.
 - `--log-file`: Path to log file (for background mode).
 
 ### Example
 
-```bash
-arc run
-arc run --config custom.pkl --background
+```sh
+arc start
+arc start --config custom.pkl --background
 ```
 
 ## stop
 
 Stop running Arc servers.
 
-```bash
+```sh
 arc stop [process-name]
 ```
 
@@ -60,7 +60,7 @@ arc stop [process-name]
 
 ### Example
 
-```bash
+```sh
 arc stop
 arc stop my-arc-instance
 ```
@@ -69,7 +69,7 @@ arc stop my-arc-instance
 
 Check the status of running Arc servers.
 
-```bash
+```sh
 arc status
 ```
 
@@ -83,7 +83,7 @@ Displays information about all running Arc processes, including:
 
 View server logs.
 
-```bash
+```sh
 arc logs [process-name] [--follow]
 ```
 
@@ -97,7 +97,7 @@ arc logs [process-name] [--follow]
 
 ### Example
 
-```bash
+```sh
 arc logs
 arc logs my-arc-instance --follow
 ```

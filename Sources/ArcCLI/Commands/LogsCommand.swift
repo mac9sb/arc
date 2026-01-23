@@ -16,7 +16,7 @@ private final class ErrorBox: @unchecked Sendable {
 ///
 /// ## Usage
 ///
-/// ```bash
+/// ```sh
 /// arc logs                # Show last 50 lines of logs
 /// arc logs --follow       # Follow log output (like tail -f)
 /// ```
@@ -71,12 +71,14 @@ public struct LogsCommand: ParsableCommand {
 
     private static func runAsync(configPath: String, follow: Bool) async throws {
         // Resolve relative paths to absolute paths
+        // First expand tilde paths
+        let expandedPath = (configPath as NSString).expandingTildeInPath
         let resolvedPath: String
-        if (configPath as NSString).isAbsolutePath {
-            resolvedPath = configPath
+        if (expandedPath as NSString).isAbsolutePath {
+            resolvedPath = expandedPath
         } else {
             let currentDir = FileManager.default.currentDirectoryPath
-            resolvedPath = (currentDir as NSString).appendingPathComponent(configPath)
+            resolvedPath = (currentDir as NSString).appendingPathComponent(expandedPath)
         }
 
         let configURL = URL(fileURLWithPath: resolvedPath)
@@ -91,7 +93,7 @@ public struct LogsCommand: ParsableCommand {
             return
         }
 
-        let logPath = "\(config.logDir)/arc.log"
+        let logPath = "\((config.logDir as NSString).expandingTildeInPath)/arc.log"
 
         if !FileManager.default.fileExists(atPath: logPath) {
             Noora().warning("Log file not found")

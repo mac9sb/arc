@@ -43,8 +43,6 @@ public final class HTTPServer: @unchecked Sendable {
 
         let channel = try await bootstrap.bind(host: "0.0.0.0", port: Int(config.proxyPort)).get()
         self.serverChannel = channel
-
-        Noora().success("HTTP server listening on port \(config.proxyPort)")
     }
 
     /// Stops the HTTP listener.

@@ -12,7 +12,7 @@ public struct ArcRootCommand: ParsableCommand {
         version: "1.0.0",
         subcommands: [
             InitializeCommand.self,
-            RunCommand.self,
+            StartCommand.self,
             StopCommand.self,
             StatusCommand.self,
             LogsCommand.self,

@@ -13,12 +13,15 @@ Server applications built with Swift and Hummingbird. Each subdirectory is a sta
 
 **Working with apps:**
 
-```bash
+```sh
 cd apps/<app-name>
 swift build -c release
 ```
 
 Apps are configured in `config.pkl` with `kind = "app"` and require a port assignment.
+
+> [!NOTE]
+> Your app doesn't have to be a Swift Hummingbird application that is just used for example, realistically anything you can start as a script or exectuable will work fine.
 
 ### `static/`
 
@@ -29,7 +32,7 @@ Static sites built with Swift and WebUI. Each subdirectory is a standalone site 
 
 **Working with static sites:**
 
-```bash
+```sh
 cd static/<site-name>
 swift run
 ```
@@ -42,15 +45,25 @@ Arc server configuration defining all hosted sites and services. See `pkl/ArcCon
 
 ## Running the Server
 
-```bash
-arc run              # Start in foreground
-arc run --background # Start in background
-arc status           # Check running processes and site health
-arc logs             # View logs
-arc stop             # Stop running servers
+```sh
+arc start              # Start in foreground
+arc start --background # Start in background
+arc status             # Check running processes and site health
+arc logs               # View logs
+arc stop               # Stop running servers
 ```
 
 The server proxies requests based on domain configuration in `config.pkl`.
+
+### Cloudflare tunnel and "cannot be reached"
+
+If cloudflare is enabled and a site (e.g. `guest-list.maclong.dev`) shows **cannot be reached** even though arc and the app are running:
+
+1. Add each ingress hostname as a **Public Hostname** in Cloudflare Zero Trust: **Tunnels** → your tunnel → **Public Hostname** → Add (`guest-list.maclong.dev` → `http://localhost:8000` or similar).
+2. Ensure the tunnel is healthy and the credentials file `~/.cloudflared/<TUNNEL_UUID>.json` exists.
+3. **Keep the tunnel locally configured.** Do not migrate to dashboard-managed ingress. Migration is irreversible and the local config file's ingress rules would then be ignored; hostnames would only be manageable from the dashboard.
+
+Run `arc start -v` to see tunnel and hostname hints when cloudflared starts.
 
 ## File Watching
 

@@ -6,7 +6,10 @@ import Foundation
 /// Using an actor ensures thread-safe access to mutable state from async contexts.
 public actor SharedState {
     public var config: ArcConfig
-    private var processManager: ServerProcessManager
+    /// Process manager is nonisolated(unsafe) because we call its async methods (startProcess,
+    /// restartProcess) which are nonisolated. Access is serialized by the actor; we never
+    /// touch processManager concurrently.
+    nonisolated(unsafe) private var processManager: ServerProcessManager
 
     /// Creates a new shared state instance.
     ///
@@ -34,8 +37,8 @@ public actor SharedState {
         workingDir: String,
         type: ServerProcessManager.ProcessRecord.ProcessType,
         env: [String: String]
-    ) throws -> pid_t {
-        try processManager.startProcess(
+    ) async throws -> pid_t {
+        try await processManager.startProcess(
             name: name,
             command: command,
             args: args,
@@ -55,8 +58,8 @@ public actor SharedState {
         workingDir: String,
         type: ServerProcessManager.ProcessRecord.ProcessType,
         env: [String: String]
-    ) throws -> pid_t {
-        try processManager.restartProcess(
+    ) async throws -> pid_t {
+        try await processManager.restartProcess(
             name: name,
             command: command,
             args: args,
@@ -67,8 +70,35 @@ public actor SharedState {
     }
 
     /// Stops all managed processes.
+    ///
+    /// Stops tracked processes (SIGTERM → wait → SIGKILL), then kills any app
+    /// processes still listening on configured ports or matching "GuestListWeb"
+    /// (catches orphans when we've lost PIDs, e.g. after config reload).
     public func stopAll() {
         processManager.stopAll()
+
+        // Fallback: kill app processes by port (we may have lost PIDs)
+        for site in config.sites {
+            switch site {
+            case .app(let appSite):
+                if let pid = ServiceDetector.getPIDForPort(appSite.port) {
+                    ServiceDetector.killProcessGracefully(pid: pid, waitSeconds: 2)
+                }
+            case .static:
+                break
+            }
+        }
+
+        // Fallback: pgrep for app executables (covers PORT mismatch, e.g. .env vs config)
+        var appPids: Set<pid_t> = []
+        for pattern in ["GuestListWeb", "guestlist", "guest-list"] {
+            for pid in ServiceDetector.getPIDsMatching(pattern: pattern) {
+                appPids.insert(pid)
+            }
+        }
+        for pid in appPids {
+            ServiceDetector.killProcessGracefully(pid: pid, waitSeconds: 2)
+        }
     }
 
     /// Starts cloudflared tunnel if enabled in configuration.
@@ -76,7 +106,7 @@ public actor SharedState {
     /// - Parameter config: The Arc configuration.
     /// - Returns: The process ID if cloudflared was started, `nil` if disabled.
     /// - Throws: An error if cloudflared cannot be started or configuration is invalid.
-    public func startCloudflared(config: ArcConfig) throws -> pid_t? {
+    public func startCloudflared(config: ArcConfig) async throws -> pid_t? {
         guard let tunnel = config.cloudflare, tunnel.enabled else {
             return nil
         }
@@ -93,12 +123,24 @@ public actor SharedState {
                 "Cloudflared executable not found at: \(tunnel.cloudflaredPath)")
         }
 
-        // Generate and write config file
+        // Validate credentials file exists
+        let credentialsPath = CloudflaredConfigGenerator.generateCredentialsFilePath(tunnelUUID: tunnelUUID)
+        guard FileManager.default.fileExists(atPath: credentialsPath) else {
+            throw CloudflaredConfigError.credentialsFileMissing(
+                tunnelUUID: tunnelUUID,
+                credentialsPath: credentialsPath
+            )
+        }
+
+        // Always kill any existing cloudflared first (orphans from previous runs or double-start)
+        stopCloudflared()
+
+        // Generate and write config file to ~/.cloudflared/config.yml (cloudflared default)
         try CloudflaredConfigGenerator.writeConfig(config: config, tunnel: tunnel)
 
-        // Start cloudflared process
+        // Start cloudflared: just "tunnel run"; uses default config at ~/.cloudflared/config.yml
         let baseDir = config.baseDir ?? FileManager.default.currentDirectoryPath
-        let pid = try processManager.startProcess(
+        let pid = try await processManager.startProcess(
             name: "cloudflared",
             command: cloudflaredPath,
             args: ["tunnel", "run"],
@@ -111,8 +153,23 @@ public actor SharedState {
     }
 
     /// Stops the cloudflared tunnel process.
+    ///
+    /// Tries the managed process first, then uses pgrep to find and kill any
+    /// remaining "cloudflared tunnel run" processes (e.g. after config reload
+    /// when we lose the PID). Uses SIGTERM, waits, then SIGKILL for stubborn processes.
     public func stopCloudflared() {
         _ = processManager.stopProcess(name: "cloudflared")
+
+        // Fallback: pgrep for cloudflared tunnel processes we may have lost track of
+        var cloudflaredPids: Set<pid_t> = []
+        for pattern in ["cloudflared tunnel run", "cloudflared tunnel"] {
+            for pid in ServiceDetector.getPIDsMatching(pattern: pattern) {
+                cloudflaredPids.insert(pid)
+            }
+        }
+        for pid in cloudflaredPids {
+            ServiceDetector.killProcessGracefully(pid: pid, waitSeconds: 2)
+        }
     }
 
     /// Restarts cloudflared tunnel on configuration changes.
@@ -120,7 +177,7 @@ public actor SharedState {
     /// - Parameter config: The Arc configuration.
     /// - Returns: The process ID if cloudflared was restarted, `nil` if disabled.
     /// - Throws: An error if cloudflared cannot be restarted or configuration is invalid.
-    public func restartCloudflared(config: ArcConfig) throws -> pid_t? {
+    public func restartCloudflared(config: ArcConfig) async throws -> pid_t? {
         guard let tunnel = config.cloudflare, tunnel.enabled else {
             // If disabled, stop any running cloudflared
             stopCloudflared()
@@ -139,12 +196,21 @@ public actor SharedState {
                 "Cloudflared executable not found at: \(tunnel.cloudflaredPath)")
         }
 
-        // Generate and write config file
+        // Validate credentials file exists
+        let credentialsPath = CloudflaredConfigGenerator.generateCredentialsFilePath(tunnelUUID: tunnelUUID)
+        guard FileManager.default.fileExists(atPath: credentialsPath) else {
+            throw CloudflaredConfigError.credentialsFileMissing(
+                tunnelUUID: tunnelUUID,
+                credentialsPath: credentialsPath
+            )
+        }
+
+        // Generate and write config file to ~/.cloudflared/config.yml (cloudflared default)
         try CloudflaredConfigGenerator.writeConfig(config: config, tunnel: tunnel)
 
-        // Restart cloudflared process
+        // Restart cloudflared: just "tunnel run"; uses default config at ~/.cloudflared/config.yml
         let baseDir = config.baseDir ?? FileManager.default.currentDirectoryPath
-        let pid = try processManager.restartProcess(
+        let pid = try await processManager.restartProcess(
             name: "cloudflared",
             command: cloudflaredPath,
             args: ["tunnel", "run"],
@@ -152,6 +218,15 @@ public actor SharedState {
             type: .cloudflared,
             env: [:]
         )
+
+        // Wait a moment for process to start, then verify it's running
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        let isRunning = ServiceDetector.isProcessRunning(pid: pid)
+        
+        if !isRunning {
+            let logPath = "\((config.logDir as NSString).expandingTildeInPath)/cloudflared.log"
+            throw CloudflaredConfigError.processExitedImmediately(pid: pid, logPath: logPath)
+        }
 
         return pid
     }

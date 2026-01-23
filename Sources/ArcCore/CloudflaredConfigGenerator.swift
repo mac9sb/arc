@@ -7,6 +7,8 @@ public enum CloudflaredConfigError: Error, Equatable {
     case noSitesConfigured
     case sshDomainRequired
     case configWriteFailed(String)
+    case processExitedImmediately(pid: pid_t, logPath: String)
+    case credentialsFileMissing(tunnelUUID: String, credentialsPath: String)
 
     /// Returns an ErrorAlert for display with Noora.
     public var errorAlert: ErrorAlert {
@@ -49,6 +51,63 @@ public enum CloudflaredConfigError: Error, Equatable {
                     "Ensure the config directory exists and is writable",
                 ]
             )
+        case .processExitedImmediately(let pid, let logPath):
+            return .alert(
+                "Cloudflared tunnel failed to start",
+                takeaways: [
+                    "The cloudflared process (PID: \(pid)) exited immediately after starting",
+                    "This usually indicates a configuration or authentication error",
+                    "Check the log file: \(logPath)",
+                    "",
+                    "Common issues and solutions:",
+                    "1. Not logged in to Cloudflare:",
+                    "   Run: \(.command("cloudflared tunnel login"))",
+                    "",
+                    "2. Tunnel not created:",
+                    "   Create a tunnel: \(.command("cloudflared tunnel create <TUNNEL_NAME>"))",
+                    "   This will output a tunnel UUID - add it to config.pkl",
+                    "",
+                    "3. Missing credentials file:",
+                    "   The file ~/.cloudflared/<TUNNEL_UUID>.json must exist",
+                    "   Option A - Create new tunnel (recommended):",
+                    "     Run: \(.command("cloudflared tunnel create <TUNNEL_NAME>"))",
+                    "     This automatically creates ~/.cloudflared/<TUNNEL_UUID>.json",
+                    "   Option B - For existing tunnels, get credentials:",
+                    "     Run: \(.command("cloudflared tunnel token --cred-file ~/.cloudflared/<TUNNEL_UUID>.json <TUNNEL_NAME>"))",
+                    "     Or using UUID: \(.command("cloudflared tunnel token --cred-file ~/.cloudflared/<TUNNEL_UUID>.json <TUNNEL_UUID>"))",
+                    "     Note: Use --cred-file (with hyphen), not --credfile",
+                    "     Note: This command only works for tunnels created since cloudflared version 2022.3.0",
+                    "",
+                    "4. Invalid tunnel UUID:",
+                    "   Verify the tunnel UUID in config.pkl matches your Cloudflare tunnel",
+                    "   List tunnels: \(.command("cloudflared tunnel list"))",
+                    "",
+                    "5. Check cloudflared logs for details:",
+                    "   \(.command("cat \(logPath)"))",
+                ]
+            )
+        case .credentialsFileMissing(let tunnelUUID, let credentialsPath):
+            return .alert(
+                "Cloudflared credentials file not found",
+                takeaways: [
+                    "The credentials file is missing: \(credentialsPath)",
+                    "This file is required to authenticate with Cloudflare",
+                    "",
+                    "To get the credentials file:",
+                    "Option A - Create new tunnel (recommended):",
+                    "  Run: \(.command("cloudflared tunnel create <TUNNEL_NAME>"))",
+                    "  This automatically creates ~/.cloudflared/<TUNNEL_UUID>.json",
+                    "",
+                    "Option B - For existing tunnels, get credentials:",
+                    "  Run: \(.command("cloudflared tunnel token --cred-file ~/.cloudflared/<TUNNEL_UUID>.json <TUNNEL_NAME>"))",
+                    "  Or using UUID: \(.command("cloudflared tunnel token --cred-file ~/.cloudflared/<TUNNEL_UUID>.json <TUNNEL_UUID>"))",
+                    "  Note: Use --cred-file (with hyphen), not --credfile",
+                    "  Note: This command only works for tunnels created since cloudflared version 2022.3.0",
+                    "",
+                    "Expected file location: \(credentialsPath)",
+                    "Tunnel UUID: \(tunnelUUID)",
+                ]
+            )
         }
     }
 }
@@ -68,9 +127,9 @@ public struct CloudflaredConfigGenerator {
             throw CloudflaredConfigError.tunnelUUIDRequired
         }
 
-        // Extract domains from sites
-        let domains = extractDomains(from: config.sites)
-        guard !domains.isEmpty else {
+        // Build domain → port mapping: app sites use their port, static sites use proxy port
+        let domainPorts = extractDomainPorts(from: config.sites, proxyPort: config.proxyPort)
+        guard !domainPorts.isEmpty else {
             throw CloudflaredConfigError.noSitesConfigured
         }
 
@@ -82,10 +141,10 @@ public struct CloudflaredConfigGenerator {
         yaml += "credentials-file: \(credentialsPath)\n"
         yaml += "ingress:\n"
 
-        // Add ingress rules for each domain
-        for domain in domains {
+        // Add ingress rules for each domain (use site-specific port)
+        for (domain, port) in domainPorts.sorted(by: { $0.0 < $1.0 }) {
             yaml += "  - hostname: \(domain)\n"
-            yaml += "    service: http://localhost:\(config.proxyPort)\n"
+            yaml += "    service: http://localhost:\(port)\n"
             yaml += "    originRequest:\n"
             yaml += "      httpHostHeader: \(domain)\n"
         }
@@ -137,26 +196,29 @@ public struct CloudflaredConfigGenerator {
     ///
     /// - Parameter tunnelUUID: The tunnel UUID.
     /// - Returns: The expanded credentials file path.
-    private static func generateCredentialsFilePath(tunnelUUID: String) -> String {
+    public static func generateCredentialsFilePath(tunnelUUID: String) -> String {
         let homeDir = NSHomeDirectory()
         return "\(homeDir)/.cloudflared/\(tunnelUUID).json"
     }
 
-    /// Extracts unique domains from sites.
+    /// Extracts domain → port mapping from sites.
+    /// App sites use their configured port (e.g. 8000); static sites use the proxy port.
     ///
-    /// - Parameter sites: Array of sites.
-    /// - Returns: Array of unique domain strings.
-    private static func extractDomains(from sites: [Site]) -> [String] {
-        var domains: Set<String> = []
+    /// - Parameters:
+    ///   - sites: Array of sites.
+    ///   - proxyPort: Port the Arc proxy listens on (used for static sites).
+    /// - Returns: Array of (domain, port) tuples.
+    private static func extractDomainPorts(from sites: [Site], proxyPort: Int) -> [(String, Int)] {
+        var result: [(String, Int)] = []
         for site in sites {
             switch site {
             case .static(let staticSite):
-                domains.insert(staticSite.domain)
+                result.append((staticSite.domain, proxyPort))
             case .app(let appSite):
-                domains.insert(appSite.domain)
+                result.append((appSite.domain, appSite.port))
             }
         }
-        return Array(domains).sorted()
+        return result
     }
 
     /// Expands a path, handling `~` and relative paths.

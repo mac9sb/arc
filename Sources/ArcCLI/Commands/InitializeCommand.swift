@@ -48,7 +48,7 @@ public struct InitializeCommand: ParsableCommand {
                     "cd \(targetDir)",
                     "Build the example API: cd apps/example-api && swift build -c release",
                     "Build the static site: cd static/example-site && swift run ExampleSite",
-                    "Start arc: arc run",
+                    "Start arc: arc start",
                 ]))
     }
 

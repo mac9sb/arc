@@ -10,7 +10,7 @@ struct ArcConfigTests {
         let config = ArcConfig()
 
         #expect(config.proxyPort == 8080)
-        #expect(config.logDir == "/var/log/arc")
+        #expect(config.logDir == "~/Library/Logs/arc")
         #expect(config.healthCheckInterval == 30)
         #expect(config.version == "V.2.0.0")
         #expect(config.sites.isEmpty)

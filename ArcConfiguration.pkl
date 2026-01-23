@@ -37,8 +37,8 @@ proxyPort: Int = 8080
 
 /// Directory for log files.
 ///
-/// Default: "~/Library/Logs/arc" (user-writable on macOS)
-logDir: String = "~/Library/Logs/arc"
+/// Default: "/var/log/arc"
+logDir: String = "/var/log/arc"
 
 /// Base directory for all projects.
 ///

@@ -1,14 +1,12 @@
 amends "ArcConfiguration.pkl"
 
 sites {
-    new {
-        kind = "static"
+    new StaticSite {
         name = "example-site"
         domain = "example-site.localhost"
         outputPath = "static/example-site/.output"
     }
-    new {
-        kind = "app"
+    new AppSite {
         name = "example-api"
         domain = "example-api.localhost"
         port = 8000
@@ -24,7 +22,6 @@ cloudflare {
     cloudflaredPath = "/opt/homebrew/bin/cloudflared"
     tunnelName = ""
     tunnelUUID = ""
-    configPath = "~/.cloudflared/config.yml"
 }
 
 ssh {

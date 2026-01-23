@@ -9,10 +9,10 @@ Learn how to configure Arc using Pkl configuration files.
 
     @Section(title: "Configuration File Location") {
         @ContentAndMedia {
-            By default, Arc looks for `pkl/config.pkl` in your project root. You can specify a different path:
+            By default, Arc looks for `config.pkl` in your project root. You can specify a different path:
 
-            ```bash
-            arc run --config /path/to/config.pkl
+            ```sh
+            arc start --config /path/to/config.pkl
             ```
         }
     }
@@ -78,9 +78,10 @@ Learn how to configure Arc using Pkl configuration files.
             cloudflare {
                 enabled = true
                 tunnelUUID = "your-tunnel-uuid"
-                configPath = "~/.cloudflared/config.yml"
             }
             ```
+            
+            Note: `configPath` defaults to `~/.cloudflared/config.yml` and typically doesn't need to be specified.
         }
     }
 }

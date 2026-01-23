@@ -16,7 +16,7 @@ private final class ErrorBox: @unchecked Sendable {
 ///
 /// ## Usage
 ///
-/// ```bash
+/// ```sh
 /// arc stop                # Interactive mode: list and select process
 /// arc stop <name>         # Stop a specific process by name
 /// arc stop --all          # Stop all running processes
@@ -66,7 +66,16 @@ public struct StopCommand: ParsableCommand {
         Task { @Sendable in
             defer { semaphore.signal() }
             do {
-                let configURL = URL(fileURLWithPath: configPath)
+                // Expand tilde paths before creating URL
+                let expandedPath = (configPath as NSString).expandingTildeInPath
+                let resolvedPath: String
+                if (expandedPath as NSString).isAbsolutePath {
+                    resolvedPath = expandedPath
+                } else {
+                    let currentDir = FileManager.default.currentDirectoryPath
+                    resolvedPath = (currentDir as NSString).appendingPathComponent(expandedPath)
+                }
+                let configURL = URL(fileURLWithPath: resolvedPath)
                 let baseDir = configURL.deletingLastPathComponent().path
                 let pidDir = URL(fileURLWithPath: "\(baseDir)/.pid")
 
