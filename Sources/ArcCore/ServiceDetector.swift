@@ -123,8 +123,9 @@ public struct ServiceDetector {
 
     /// Checks if a process is running.
     private func isProcessRunning(_ pid: Int32) -> Bool {
+        guard pid > 0 else { return false }
         // On macOS/Unix, sending signal 0 checks if process exists
-        kill(pid, 0) == 0
+        return kill(pid, 0) == 0
     }
 
     /// Checks if a process is currently running.
@@ -134,8 +135,9 @@ public struct ServiceDetector {
     /// - Parameter pid: The process identifier to check.
     /// - Returns: `true` if the process is running, `false` otherwise.
     public static func isProcessRunning(pid: Int32) -> Bool {
+        guard pid > 0 else { return false }
         // On macOS/Unix, sending signal 0 checks if process exists
-        kill(pid, 0) == 0
+        return kill(pid, 0) == 0
     }
 
     /// Signals that can be sent to a process.

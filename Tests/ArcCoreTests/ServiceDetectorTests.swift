@@ -19,14 +19,18 @@ struct ServiceDetectorTests {
 
     @Test("KillProcess sends signal to process")
     func testKillProcess() {
-        // Test with current process (should succeed but not actually kill)
-        let currentPID = ProcessInfo.processInfo.processIdentifier
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sleep")
+        process.arguments = ["10"]
+        try? process.run()
 
-        // SIGTERM should succeed (process exists)
-        let termResult = ServiceDetector.killProcess(pid: Int32(currentPID), signal: .term)
+        let pid = Int32(process.processIdentifier)
+        #expect(ServiceDetector.isProcessRunning(pid: pid))
+
+        let termResult = ServiceDetector.killProcess(pid: pid, signal: .term)
         #expect(termResult)
 
-        // Process should still be running
-        #expect(ServiceDetector.isProcessRunning(pid: Int32(currentPID)))
+        process.waitUntilExit()
+        #expect(!ServiceDetector.isProcessRunning(pid: pid))
     }
 }

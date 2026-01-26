@@ -72,5 +72,12 @@ let package = Package(
                 .product(name: "Testing", package: "swift-testing"),
             ]
         ),
+        .testTarget(
+            name: "ArcCLITests",
+            dependencies: [
+                "ArcCLI",
+                .product(name: "Testing", package: "swift-testing"),
+            ]
+        ),
     ]
 )

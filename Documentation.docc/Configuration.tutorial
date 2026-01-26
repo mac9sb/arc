@@ -77,11 +77,10 @@ Learn how to configure Arc using Pkl configuration files.
             ```pkl
             cloudflare {
                 enabled = true
-                tunnelUUID = "your-tunnel-uuid"
+                tunnelName = "your-tunnel-name"
+                // or tunnelUUID = "your-tunnel-uuid"
             }
             ```
-            
-            Note: `configPath` defaults to `~/.cloudflared/config.yml` and typically doesn't need to be specified.
         }
     }
 }

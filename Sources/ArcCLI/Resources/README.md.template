@@ -59,11 +59,10 @@ The server proxies requests based on domain configuration in `config.pkl`.
 
 If cloudflare is enabled and a site (e.g. `guest-list.maclong.dev`) shows **cannot be reached** even though arc and the app are running:
 
-1. Add each ingress hostname as a **Public Hostname** in Cloudflare Zero Trust: **Tunnels** → your tunnel → **Public Hostname** → Add (`guest-list.maclong.dev` → `http://localhost:8000` or similar).
+1. Add each hostname as a **Public Hostname** in Cloudflare Zero Trust: **Tunnels** → your tunnel → **Public Hostname** → Add (`guest-list.maclong.dev` → `http://localhost:8000` or similar).
 2. Ensure the tunnel is healthy and the credentials file `~/.cloudflared/<TUNNEL_UUID>.json` exists.
-3. **Keep the tunnel locally configured.** Do not migrate to dashboard-managed ingress. Migration is irreversible and the local config file's ingress rules would then be ignored; hostnames would only be manageable from the dashboard.
 
-Run `arc start -v` to see tunnel and hostname hints when cloudflared starts.
+Run `arc start -v` to see tunnel hints when cloudflared starts.
 
 ## File Watching
 

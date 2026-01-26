@@ -125,8 +125,12 @@ public struct ProcessNameGenerator {
         }
 
         // Ensure it starts/ends with alphanumeric
-        if sanitized.isEmpty || sanitized.first?.isNumber == false
-            || sanitized.last?.isNumber == false
+        let isValidEdge: (Character) -> Bool = { character in
+            character.unicodeScalars.allSatisfy { CharacterSet.alphanumerics.contains($0) }
+        }
+        if sanitized.isEmpty
+            || sanitized.first.map(isValidEdge) == false
+            || sanitized.last.map(isValidEdge) == false
         {
             // If validation fails, generate a random name
             return generate()

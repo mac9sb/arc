@@ -287,21 +287,16 @@ public struct CloudflareTunnel: Decodable, Hashable, Sendable {
     /// Tunnel UUID (optional).
     public var tunnelUUID: String?
 
-    /// Path to cloudflared config file.
-    public var configPath: String
-
     public init(
         enabled: Bool = false,
         cloudflaredPath: String = "/opt/homebrew/bin/cloudflared",
         tunnelName: String? = nil,
-        tunnelUUID: String? = nil,
-        configPath: String = "~/.cloudflared/config.yml"
+        tunnelUUID: String? = nil
     ) {
         self.enabled = enabled
         self.cloudflaredPath = cloudflaredPath
         self.tunnelName = tunnelName
         self.tunnelUUID = tunnelUUID
-        self.configPath = configPath
     }
 }
 

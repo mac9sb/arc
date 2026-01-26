@@ -65,6 +65,7 @@ private nonisolated func redirectStdioToLog(logPath: String) {
 /// arc start                    # Start in foreground with default config
 /// arc start --config custom.pkl # Use custom config file
 /// arc start --background        # Start in background mode
+/// arc start --keep-awake        # Prevent system sleep while running
 /// ```
 public struct StartCommand: ParsableCommand {
     public init() {}
@@ -98,6 +99,10 @@ public struct StartCommand: ParsableCommand {
     @Flag(name: .shortAndLong, help: "Enable verbose logging")
     var verbose: Bool = false
 
+    /// Prevent system sleep while the server is running.
+    @Flag(name: .long, help: "Prevent system sleep while server is running")
+    var keepAwake: Bool = false
+
     /// Internal: run server loop only (used when spawning background subprocess).
     @Flag(name: .long, help: .hidden)
     var internalServer: Bool = false
@@ -115,14 +120,25 @@ public struct StartCommand: ParsableCommand {
         let logFilePath = logFile
         let isVerbose = verbose
         let isInternalServer = internalServer
+        let keepAwakeEnabled = keepAwake
 
         if runBackground, !isInternalServer {
-            try Self.runBackgroundSpawn(configPath: configPath, logFile: logFilePath, verbose: isVerbose)
+            try Self.runBackgroundSpawn(
+                configPath: configPath,
+                logFile: logFilePath,
+                verbose: isVerbose,
+                keepAwake: keepAwakeEnabled
+            )
             return
         }
 
         if isInternalServer {
-            try Self.runInternalServer(configPath: configPath, logFile: logFilePath, verbose: isVerbose)
+            try Self.runInternalServer(
+                configPath: configPath,
+                logFile: logFilePath,
+                verbose: isVerbose,
+                keepAwake: keepAwakeEnabled
+            )
             return
         }
 
@@ -133,7 +149,12 @@ public struct StartCommand: ParsableCommand {
 
         Task { @Sendable in
             do {
-                try await Self.runForeground(configPath: configPath, verbose: isVerbose, shutdownSemaphore: semaphore)
+                try await Self.runForeground(
+                    configPath: configPath,
+                    verbose: isVerbose,
+                    keepAwake: keepAwakeEnabled,
+                    shutdownSemaphore: semaphore
+                )
             } catch {
                 errorBox.error = error
                 semaphore.signal()
@@ -148,12 +169,19 @@ public struct StartCommand: ParsableCommand {
 
     // MARK: - Foreground
 
-    private static func runForeground(configPath: String, verbose: Bool, shutdownSemaphore: DispatchSemaphore? = nil) async throws {
+    private static func runForeground(
+        configPath: String,
+        verbose: Bool,
+        keepAwake: Bool,
+        shutdownSemaphore: DispatchSemaphore? = nil
+    ) async throws {
         if verbose {
             Noora().info("Arc Development Server")
             Noora().info("Starting in foreground mode...")
             Noora().info("Verbose mode enabled")
         }
+        let keepAwakeSession = KeepAwakeSession.startIfNeeded(enabled: keepAwake, verbose: verbose)
+        defer { keepAwakeSession?.stop(verbose: verbose) }
 
         // Resolve relative paths to absolute paths
         let resolvedConfigPath: String
@@ -243,7 +271,12 @@ public struct StartCommand: ParsableCommand {
 
     /// Spawns a subprocess that runs the server (--internal-server), waits for it to be ready, prints, then exits.
     /// The parent returns immediately; the child keeps running until killed.
-    private static func runBackgroundSpawn(configPath: String, logFile: String?, verbose: Bool) throws {
+    private static func runBackgroundSpawn(
+        configPath: String,
+        logFile: String?,
+        verbose: Bool,
+        keepAwake: Bool
+    ) throws {
         let semaphore = DispatchSemaphore(value: 0)
         let errorBox = ErrorBox()
 
@@ -255,7 +288,8 @@ public struct StartCommand: ParsableCommand {
                     logFile: logFile,
                     baseDir: baseDir,
                     processName: processName,
-                    verbose: verbose
+                    verbose: verbose,
+                    keepAwake: keepAwake
                 )
                 semaphore.signal()
             } catch {
@@ -291,7 +325,8 @@ public struct StartCommand: ParsableCommand {
         logFile: String?,
         baseDir: String,
         processName: String,
-        verbose: Bool
+        verbose: Bool,
+        keepAwake: Bool
     ) throws {
         let argv0 = ProcessInfo.processInfo.arguments[0]
         let executable: String
@@ -309,6 +344,9 @@ public struct StartCommand: ParsableCommand {
         }
         if verbose {
             args += ["--verbose"]
+        }
+        if keepAwake {
+            args += ["--keep-awake"]
         }
 
         let process = Process()
@@ -356,7 +394,12 @@ public struct StartCommand: ParsableCommand {
 
     /// Runs the server loop when invoked as child of runBackgroundSpawn (--internal-server).
     /// Blocks until shutdown; never returns except on error.
-    private static func runInternalServer(configPath: String, logFile: String?, verbose: Bool) throws {
+    private static func runInternalServer(
+        configPath: String,
+        logFile: String?,
+        verbose: Bool,
+        keepAwake: Bool
+    ) throws {
         let semaphore = DispatchSemaphore(value: 0)
         let errorBox = ErrorBox()
         installShutdownHandlers()
@@ -367,6 +410,7 @@ public struct StartCommand: ParsableCommand {
                     configPath: configPath,
                     logFile: logFile,
                     verbose: verbose,
+                    keepAwake: keepAwake,
                     internalServer: true,
                     shutdownSemaphore: semaphore
                 )
@@ -387,6 +431,7 @@ public struct StartCommand: ParsableCommand {
         configPath: String,
         logFile: String?,
         verbose: Bool,
+        keepAwake: Bool,
         internalServer: Bool = false,
         shutdownSemaphore: DispatchSemaphore? = nil
     ) async throws {
@@ -464,6 +509,8 @@ public struct StartCommand: ParsableCommand {
             fflush(stderr)
         }
         redirectStdioToLog(logPath: logPath)
+        let keepAwakeSession = KeepAwakeSession.startIfNeeded(enabled: keepAwake, verbose: verbose)
+        defer { keepAwakeSession?.stop(verbose: verbose) }
 
         let shutdownSignal = ShutdownSignal()
         shutdownSignal.reset()
@@ -494,14 +541,13 @@ public struct StartCommand: ParsableCommand {
 
         if verbose {
             let cloudflaredPath = (tunnel.cloudflaredPath as NSString).expandingTildeInPath
-            let configPath = (tunnel.configPath as NSString).expandingTildeInPath
             let logPath = "\((config.logDir as NSString).expandingTildeInPath)/cloudflared.log"
+            let identifier = tunnel.tunnelName ?? tunnel.tunnelUUID ?? "none"
+            Noora().info("Starting cloudflared tunnel...")
+            Noora().info("  Executable: \(cloudflaredPath)")
+            Noora().info("  Tunnel: \(identifier)")
             if let tunnelUUID = tunnel.tunnelUUID {
-                let credentialsPath = CloudflaredConfigGenerator.generateCredentialsFilePath(tunnelUUID: tunnelUUID)
-                Noora().info("Starting cloudflared tunnel...")
-                Noora().info("  Executable: \(cloudflaredPath)")
-                Noora().info("  Config: \(configPath)")
-                Noora().info("  Tunnel UUID: \(tunnelUUID)")
+                let credentialsPath = CloudflaredCredentials.filePath(tunnelUUID: tunnelUUID)
                 Noora().info("  Credentials: \(credentialsPath)")
                 let credentialsExists = FileManager.default.fileExists(atPath: credentialsPath)
                 Noora().info("  Credentials file exists: \(credentialsExists)")
@@ -518,14 +564,10 @@ public struct StartCommand: ParsableCommand {
                         }
                     }
                 }
-                Noora().info("  Log file: \(logPath)")
             } else {
-                Noora().info("Starting cloudflared tunnel...")
-                Noora().info("  Executable: \(cloudflaredPath)")
-                Noora().info("  Config: \(configPath)")
-                Noora().info("  Tunnel UUID: none")
-                Noora().info("  Log file: \(logPath)")
+                Noora().info("  Credentials: (skipped; tunnelUUID not set)")
             }
+            Noora().info("  Log file: \(logPath)")
         }
 
         do {
@@ -539,7 +581,7 @@ public struct StartCommand: ParsableCommand {
                             ]))
                     Noora().success("Cloudflared process started successfully and is running")
                     Noora().info("Check Activity Monitor for 'cloudflared' process")
-                    Noora().info("If a site shows 'cannot be reached': add each ingress hostname (e.g. guest-list.maclong.dev) as a Public Hostname in Zero Trust → Tunnels → your tunnel. Do not migrate to dashboard-managed ingress, or the local config's ingress rules will be ignored.")
+                    Noora().info("If a site shows 'cannot be reached': add each hostname as a Public Hostname in Zero Trust → Tunnels → your tunnel.")
                 }
             }
         } catch let error as CloudflaredConfigError {

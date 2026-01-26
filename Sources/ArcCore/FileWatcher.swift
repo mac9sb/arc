@@ -57,7 +57,7 @@ public final class FileWatcher: @unchecked Sendable {
         }
     }
 
-    private let targets: [WatchTarget]
+    let targets: [WatchTarget]
     private let debounceConfig: DebounceConfig
     private let followSymlinks: Bool
     private let queue = DispatchQueue(label: "com.arc.filewatcher")

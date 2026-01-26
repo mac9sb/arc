@@ -182,11 +182,6 @@ class CloudflareTunnel {
 
     /// Tunnel UUID (optional).
     tunnelUUID: String?
-
-    /// Path to cloudflared config file.
-    ///
-    /// Default: "~/.cloudflared/config.yml"
-    configPath: String = "~/.cloudflared/config.yml"
 }
 
 /// SSH configuration for Cloudflare tunnel access.

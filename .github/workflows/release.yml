@@ -7,20 +7,13 @@ on:
 
 jobs:
   build:
-    name: Build for ${{ matrix.os }}-${{ matrix.arch }}
-    runs-on: ${{ matrix.runner }}
+    name: Build for macos-aarch64
+    runs-on: macos-14
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: macos
-            arch: x86_64
-            runner: macos-14
-            binary-name: arc-macos-x86_64
-          - os: macos
-            arch: aarch64
-            runner: macos-14
-            binary-name: arc-macos-aarch64
+          - arch: aarch64
 
     steps:
       - name: Checkout
@@ -37,9 +30,9 @@ jobs:
           path: |
             ~/.swift
             /usr/local/swift
-          key: swift-6.2-${{ matrix.os }}-${{ matrix.arch }}
+          key: swift-6.2-macos-${{ matrix.arch }}
           restore-keys: |
-            swift-6.2-${{ matrix.os }}-
+            swift-6.2-macos-
 
       - name: Resolve dependencies
         run: swift package clean && swift package resolve
@@ -48,22 +41,27 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .build
-          key: spm-${{ hashFiles('Package.resolved') }}-${{ matrix.os }}-${{ matrix.arch }}-6.2
+          key: spm-${{ hashFiles('Package.resolved') }}-macos-${{ matrix.arch }}-6.2
           restore-keys: |
-            spm-${{ matrix.os }}-${{ matrix.arch }}-6.2-
-            spm-${{ matrix.os }}-${{ matrix.arch }}-
+            spm-macos-${{ matrix.arch }}-6.2-
+            spm-macos-${{ matrix.arch }}-
 
       - name: Build
         run: |
-          swift build -c release --arch ${{ matrix.arch == 'x86_64' && 'x86_64' || 'arm64' }} 
-          mkdir -p release
-          cp .build/release/arc release/${{ matrix.binary-name }}
+          swift build -c release --arch arm64
+          mkdir -p release/arc
+          cp .build/release/arc release/arc/
+          cp -R .build/release/Arc_ArcCLI.bundle release/arc/
+          tar -czf arc-macos-aarch64.tar.gz -C release/arc arc Arc_ArcCLI.bundle
+          shasum -a 256 arc-macos-aarch64.tar.gz > arc-macos-aarch64.sha256
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.binary-name }}
-          path: release/${{ matrix.binary-name }}
+          name: arc-macos-aarch64
+          path: |
+            arc-macos-aarch64.tar.gz
+            arc-macos-aarch64.sha256
           retention-days: 1
 
   create-release:
@@ -88,7 +86,8 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           files: |
-            artifacts/*/arc-*
+            artifacts/*/arc-macos-aarch64.tar.gz
+            artifacts/*/arc-macos-aarch64.sha256
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

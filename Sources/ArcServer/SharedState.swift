@@ -111,9 +111,9 @@ public actor SharedState {
             return nil
         }
 
-        // Validate tunnel UUID is present
-        guard let tunnelUUID = tunnel.tunnelUUID, !tunnelUUID.isEmpty else {
-            throw CloudflaredConfigError.tunnelUUIDRequired
+        // Validate tunnel identifier is present (name or UUID)
+        guard let tunnelIdentifier = tunnel.tunnelName ?? tunnel.tunnelUUID, !tunnelIdentifier.isEmpty else {
+            throw CloudflaredConfigError.tunnelIdentifierRequired
         }
 
         // Validate cloudflared executable exists
@@ -123,27 +123,26 @@ public actor SharedState {
                 "Cloudflared executable not found at: \(tunnel.cloudflaredPath)")
         }
 
-        // Validate credentials file exists
-        let credentialsPath = CloudflaredConfigGenerator.generateCredentialsFilePath(tunnelUUID: tunnelUUID)
-        guard FileManager.default.fileExists(atPath: credentialsPath) else {
-            throw CloudflaredConfigError.credentialsFileMissing(
-                tunnelUUID: tunnelUUID,
-                credentialsPath: credentialsPath
-            )
+        // Validate credentials file exists if UUID provided
+        if let tunnelUUID = tunnel.tunnelUUID, !tunnelUUID.isEmpty {
+            let credentialsPath = CloudflaredCredentials.filePath(tunnelUUID: tunnelUUID)
+            guard FileManager.default.fileExists(atPath: credentialsPath) else {
+                throw CloudflaredConfigError.credentialsFileMissing(
+                    tunnelUUID: tunnelUUID,
+                    credentialsPath: credentialsPath
+                )
+            }
         }
 
         // Always kill any existing cloudflared first (orphans from previous runs or double-start)
         stopCloudflared()
 
-        // Generate and write config file to ~/.cloudflared/config.yml (cloudflared default)
-        try CloudflaredConfigGenerator.writeConfig(config: config, tunnel: tunnel)
-
-        // Start cloudflared: just "tunnel run"; uses default config at ~/.cloudflared/config.yml
+        // Start cloudflared using dashboard-managed tunnel configuration
         let baseDir = config.baseDir ?? FileManager.default.currentDirectoryPath
         let pid = try await processManager.startProcess(
             name: "cloudflared",
             command: cloudflaredPath,
-            args: ["tunnel", "run"],
+            args: ["tunnel", "run", tunnelIdentifier],
             workingDir: baseDir,
             type: .cloudflared,
             env: [:]
@@ -184,9 +183,9 @@ public actor SharedState {
             return nil
         }
 
-        // Validate tunnel UUID is present
-        guard let tunnelUUID = tunnel.tunnelUUID, !tunnelUUID.isEmpty else {
-            throw CloudflaredConfigError.tunnelUUIDRequired
+        // Validate tunnel identifier is present (name or UUID)
+        guard let tunnelIdentifier = tunnel.tunnelName ?? tunnel.tunnelUUID, !tunnelIdentifier.isEmpty else {
+            throw CloudflaredConfigError.tunnelIdentifierRequired
         }
 
         // Validate cloudflared executable exists
@@ -196,24 +195,23 @@ public actor SharedState {
                 "Cloudflared executable not found at: \(tunnel.cloudflaredPath)")
         }
 
-        // Validate credentials file exists
-        let credentialsPath = CloudflaredConfigGenerator.generateCredentialsFilePath(tunnelUUID: tunnelUUID)
-        guard FileManager.default.fileExists(atPath: credentialsPath) else {
-            throw CloudflaredConfigError.credentialsFileMissing(
-                tunnelUUID: tunnelUUID,
-                credentialsPath: credentialsPath
-            )
+        // Validate credentials file exists if UUID provided
+        if let tunnelUUID = tunnel.tunnelUUID, !tunnelUUID.isEmpty {
+            let credentialsPath = CloudflaredCredentials.filePath(tunnelUUID: tunnelUUID)
+            guard FileManager.default.fileExists(atPath: credentialsPath) else {
+                throw CloudflaredConfigError.credentialsFileMissing(
+                    tunnelUUID: tunnelUUID,
+                    credentialsPath: credentialsPath
+                )
+            }
         }
 
-        // Generate and write config file to ~/.cloudflared/config.yml (cloudflared default)
-        try CloudflaredConfigGenerator.writeConfig(config: config, tunnel: tunnel)
-
-        // Restart cloudflared: just "tunnel run"; uses default config at ~/.cloudflared/config.yml
+        // Restart cloudflared using dashboard-managed tunnel configuration
         let baseDir = config.baseDir ?? FileManager.default.currentDirectoryPath
         let pid = try await processManager.restartProcess(
             name: "cloudflared",
             command: cloudflaredPath,
-            args: ["tunnel", "run"],
+            args: ["tunnel", "run", tunnelIdentifier],
             workingDir: baseDir,
             type: .cloudflared,
             env: [:]
