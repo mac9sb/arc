@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     name: Build for macos-aarch64
-    runs-on: macos-14
+    runs-on: macos-26
     strategy:
       fail-fast: false
       matrix:
@@ -47,8 +47,10 @@ jobs:
             spm-macos-${{ matrix.arch }}-
 
       - name: Build
+        env:
+          SWIFT_STRICT_CONCURRENCY: minimal
         run: |
-          swift build -c release --arch arm64
+          swift build -c release --arch arm64 -Xswiftc -strict-concurrency=minimal
           mkdir -p release/arc
           cp .build/release/arc release/arc/
           cp -R .build/release/Arc_ArcCLI.bundle release/arc/
@@ -95,7 +97,7 @@ jobs:
   publish-docs:
     name: Publish Documentation
     needs: build
-    runs-on: macos-14
+    runs-on: macos-26
     permissions:
       contents: read
       pages: write
@@ -117,6 +119,8 @@ jobs:
         run: swift package resolve
 
       - name: Build DocC documentation
+        env:
+          SWIFT_STRICT_CONCURRENCY: minimal
         run: |
           swift package generate-documentation
 
