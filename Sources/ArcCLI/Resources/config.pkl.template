@@ -1,4 +1,4 @@
-amends "ArcConfiguration.pkl"
+amends "modulepath:/ArcConfiguration.pkl"
 
 sites {
     new StaticSite {

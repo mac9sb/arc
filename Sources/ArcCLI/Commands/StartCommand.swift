@@ -107,6 +107,10 @@ public struct StartCommand: ParsableCommand {
     @Flag(name: .long, help: .hidden)
     var internalServer: Bool = false
 
+    /// Internal: process name override (used to keep parent/child in sync).
+    @Option(name: .long, help: .hidden)
+    var processName: String?
+
     /// Executes the start command.
     ///
     /// Starts the Arc server in either foreground or background mode based on
@@ -121,13 +125,15 @@ public struct StartCommand: ParsableCommand {
         let isVerbose = verbose
         let isInternalServer = internalServer
         let keepAwakeEnabled = keepAwake
+        let processNameOverride = processName
 
         if runBackground, !isInternalServer {
             try Self.runBackgroundSpawn(
                 configPath: configPath,
                 logFile: logFilePath,
                 verbose: isVerbose,
-                keepAwake: keepAwakeEnabled
+                keepAwake: keepAwakeEnabled,
+                processNameOverride: processNameOverride
             )
             return
         }
@@ -137,7 +143,8 @@ public struct StartCommand: ParsableCommand {
                 configPath: configPath,
                 logFile: logFilePath,
                 verbose: isVerbose,
-                keepAwake: keepAwakeEnabled
+                keepAwake: keepAwakeEnabled,
+                processNameOverride: processNameOverride
             )
             return
         }
@@ -275,14 +282,18 @@ public struct StartCommand: ParsableCommand {
         configPath: String,
         logFile: String?,
         verbose: Bool,
-        keepAwake: Bool
+        keepAwake: Bool,
+        processNameOverride: String?
     ) throws {
         let semaphore = DispatchSemaphore(value: 0)
         let errorBox = ErrorBox()
 
         Task { @Sendable in
             do {
-                let (baseDir, processName, resolvedConfigPath) = try await Self.prepareBackgroundSpawn(configPath: configPath)
+                let (baseDir, processName, resolvedConfigPath) = try await Self.prepareBackgroundSpawn(
+                    configPath: configPath,
+                    processNameOverride: processNameOverride
+                )
                 try Self.spawnAndWaitForReady(
                     configPath: resolvedConfigPath,
                     logFile: logFile,
@@ -304,7 +315,10 @@ public struct StartCommand: ParsableCommand {
         }
     }
 
-    private static func prepareBackgroundSpawn(configPath: String) async throws -> (baseDir: String, processName: String, resolvedConfigPath: String) {
+    private static func prepareBackgroundSpawn(
+        configPath: String,
+        processNameOverride: String?
+    ) async throws -> (baseDir: String, processName: String, resolvedConfigPath: String) {
         let resolvedConfigPath: String
         if (configPath as NSString).isAbsolutePath {
             resolvedConfigPath = configPath
@@ -316,7 +330,12 @@ public struct StartCommand: ParsableCommand {
         let baseDir = currentConfig.baseDir ?? FileManager.default.currentDirectoryPath
         let pidDir = URL(fileURLWithPath: "\(baseDir)/.pid")
         let manager = ProcessDescriptorManager(baseDir: pidDir)
-        let processName = try await generateProcessName(from: currentConfig, manager: manager)
+        let processName: String
+        if let override = processNameOverride, !override.isEmpty {
+            processName = ProcessNameGenerator.sanitize(name: override)
+        } else {
+            processName = try await generateProcessName(from: currentConfig, manager: manager)
+        }
         return (baseDir, processName, resolvedConfigPath)
     }
 
@@ -338,7 +357,12 @@ public struct StartCommand: ParsableCommand {
             executable = "/usr/bin/env"
             argsPrefix = [argv0]
         }
-        var args = argsPrefix + ["start", "--config", configPath, "--internal-server"]
+        var args = argsPrefix + [
+            "start",
+            "--config", configPath,
+            "--internal-server",
+            "--process-name", processName
+        ]
         if let logFile {
             args += ["--log-file", logFile]
         }
@@ -368,17 +392,25 @@ public struct StartCommand: ParsableCommand {
                 throw ArcError.invalidConfiguration("Background process exited before ready. Check logs.")
             }
             if FileManager.default.fileExists(atPath: descriptorPath) {
+                let descriptor = readDescriptor(at: descriptorPath)
+                let resolvedName = descriptor?.name ?? processName
+                let resolvedPort = descriptor.map { String($0.proxyPort) } ?? "unknown"
                 if verbose {
                     Noora().success(
                         .alert(
                             "Background process started",
                             takeaways: [
-                                "Process: \(processName)",
+                                "Process: \(resolvedName)",
+                                "Port: \(resolvedPort)",
                                 "PID: \(childPID)",
                                 "Log: logDir/\(processName).log or --log-file",
                             ]))
                 } else {
-                    Noora().success("Background process started: \(processName) (PID: \(childPID))")
+                    if let descriptor {
+                        Noora().success("Success: \(descriptor.name) started on \(descriptor.proxyPort)")
+                    } else {
+                        Noora().success("Success: \(processName) started on unknown port")
+                    }
                 }
                 return
             }
@@ -398,7 +430,8 @@ public struct StartCommand: ParsableCommand {
         configPath: String,
         logFile: String?,
         verbose: Bool,
-        keepAwake: Bool
+        keepAwake: Bool,
+        processNameOverride: String?
     ) throws {
         let semaphore = DispatchSemaphore(value: 0)
         let errorBox = ErrorBox()
@@ -412,6 +445,7 @@ public struct StartCommand: ParsableCommand {
                     verbose: verbose,
                     keepAwake: keepAwake,
                     internalServer: true,
+                    processNameOverride: processNameOverride,
                     shutdownSemaphore: semaphore
                 )
                 semaphore.signal()
@@ -433,6 +467,7 @@ public struct StartCommand: ParsableCommand {
         verbose: Bool,
         keepAwake: Bool,
         internalServer: Bool = false,
+        processNameOverride: String? = nil,
         shutdownSemaphore: DispatchSemaphore? = nil
     ) async throws {
         if verbose {
@@ -462,7 +497,12 @@ public struct StartCommand: ParsableCommand {
         let manager = ProcessDescriptorManager(baseDir: pidDir)
 
         // Generate or use process name
-        let processName = try await generateProcessName(from: currentConfig, manager: manager)
+        let processName: String
+        if let override = processNameOverride, !override.isEmpty {
+            processName = ProcessNameGenerator.sanitize(name: override)
+        } else {
+            processName = try await generateProcessName(from: currentConfig, manager: manager)
+        }
 
         // Prepare log file
         let expandedLogDir = (currentConfig.logDir as NSString).expandingTildeInPath
@@ -813,6 +853,16 @@ public struct StartCommand: ParsableCommand {
             return (baseDir as NSString).appendingPathComponent(expanded)
         }
         return expanded
+    }
+
+    private static func readDescriptor(at path: String) -> ProcessDescriptor? {
+        let url = URL(fileURLWithPath: path)
+        guard let data = try? Data(contentsOf: url) else {
+            return nil
+        }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try? decoder.decode(ProcessDescriptor.self, from: data)
     }
 
     /// Kills any process bound to the given port and any process matching the executable name.

@@ -52,7 +52,7 @@ See the [Pkl Configuration Documentation](https://mac9sb.github.io/arc/) for the
 Example configuration:
 
 ```pkl
-amends "ArcConfiguration.pkl"
+amends "modulepath:/ArcConfiguration.pkl"
 
 sites {
     new {
@@ -108,7 +108,7 @@ Arc consists of several modules:
 
 ## Configuration
 
-Arc uses Pkl for configuration. The configuration schema is defined in `Sources/ArcCLI/Resources/ArcConfiguration.pkl`. See the [Pkl Documentation](https://mac9sb.github.io/arc/) for detailed information about all configuration options.
+Arc uses Pkl for configuration. The schema is loaded from `modulepath:/ArcConfiguration.pkl`, installed under `/opt/homebrew/share/arc` or `/usr/local/share/arc`. See the [Pkl Documentation](https://mac9sb.github.io/arc/) for detailed information about all configuration options.
 
 ## Development
 

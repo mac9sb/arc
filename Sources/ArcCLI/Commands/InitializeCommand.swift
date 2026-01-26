@@ -73,8 +73,6 @@ public struct InitializeCommand: ParsableCommand {
         let exampleSitePagesDir = (exampleSiteSourcesDir as NSString).appendingPathComponent(
             "Pages")
 
-        let pklDir = (baseDir as NSString).appendingPathComponent("pkl")
-
         // Create directories
         try fileManager.createDirectory(
             atPath: exampleApiControllersDir, withIntermediateDirectories: true)
@@ -82,16 +80,9 @@ public struct InitializeCommand: ParsableCommand {
             atPath: exampleApiPublicDir, withIntermediateDirectories: true)
         try fileManager.createDirectory(
             atPath: exampleSitePagesDir, withIntermediateDirectories: true)
-        try fileManager.createDirectory(atPath: pklDir, withIntermediateDirectories: true)
 
         // Get resource bundle path
         let resourcesPath = getResourcesPath()
-
-        // Copy ArcConfiguration.pkl to pkl directory
-        let arcConfigSource = (resourcesPath as NSString).appendingPathComponent(
-            "ArcConfiguration.pkl")
-        let arcConfigDest = (pklDir as NSString).appendingPathComponent("ArcConfiguration.pkl")
-        try fileManager.copyItem(atPath: arcConfigSource, toPath: arcConfigDest)
 
         // Generate files from templates
         try generateExampleAPI(in: exampleApiDir, resourcesPath: resourcesPath)

@@ -41,7 +41,7 @@ This generates the site into a `.output` directory. Sites are configured in `con
 
 ### `config.pkl`
 
-Arc server configuration defining all hosted sites and services. See `pkl/ArcConfiguration.pkl` for the schema.
+Arc server configuration defining all hosted sites and services. The schema is loaded from `modulepath:/ArcConfiguration.pkl` (installed under `/opt/homebrew/share/arc` or `/usr/local/share/arc`).
 
 ## Running the Server
 

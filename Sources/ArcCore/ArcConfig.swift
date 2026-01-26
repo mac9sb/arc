@@ -327,83 +327,62 @@ public struct SshConfig: Decodable, Hashable, Sendable {
 // MARK: - Module Loading
 
 extension ArcConfig {
-    /// Finds ArcConfiguration.pkl in the bundle resources.
-    ///
-    /// - Returns: Path to ArcConfiguration.pkl if found, nil otherwise.
-    private static func findArcConfigurationPkl() -> String? {
-        let fileManager = FileManager.default
-        
+    /// Returns candidate ArcConfiguration.pkl paths in preferred order.
+    private static func arcConfigurationCandidatePaths(configDir: String?) -> [String] {
+        var candidates: [String] = []
+
+        if let configDir {
+            candidates.append((configDir as NSString).appendingPathComponent("ArcConfiguration.pkl"))
+        }
+
+        candidates.append("/opt/homebrew/share/arc/ArcConfiguration.pkl")
+        candidates.append("/usr/local/share/arc/ArcConfiguration.pkl")
+
         // Try to find Resources directory relative to the executable
         let executablePath = ProcessInfo.processInfo.arguments[0]
         let executableURL = URL(fileURLWithPath: executablePath)
         let executableDir = executableURL.deletingLastPathComponent()
-        
+
         // Try bundle path - file is directly in the bundle (not in Resources subdirectory)
         var bundleURL = executableDir.appendingPathComponent("Arc_ArcCLI.bundle")
-        var arcConfigPath = bundleURL.appendingPathComponent("ArcConfiguration.pkl").path
-        
-        if fileManager.fileExists(atPath: arcConfigPath) {
-            return arcConfigPath
-        }
-        
+        candidates.append(bundleURL.appendingPathComponent("ArcConfiguration.pkl").path)
+
         // Try bundle/Resources path (for some installation methods)
         bundleURL = executableDir.appendingPathComponent("Arc_ArcCLI.bundle").appendingPathComponent("Resources")
-        arcConfigPath = bundleURL.appendingPathComponent("ArcConfiguration.pkl").path
-        
-        if fileManager.fileExists(atPath: arcConfigPath) {
-            return arcConfigPath
-        }
-        
+        candidates.append(bundleURL.appendingPathComponent("ArcConfiguration.pkl").path)
+
         // Try Resources directory next to executable
         let resourcesURL = executableDir.appendingPathComponent("Resources")
-        arcConfigPath = resourcesURL.appendingPathComponent("ArcConfiguration.pkl").path
-        
-        if fileManager.fileExists(atPath: arcConfigPath) {
-            return arcConfigPath
-        }
+        candidates.append(resourcesURL.appendingPathComponent("ArcConfiguration.pkl").path)
 
         // Try relative to Sources/ArcCLI (for development)
-        // Look for the Resources directory relative to where we might be running from
-        let currentFile = #file
-        let currentFileURL = URL(fileURLWithPath: currentFile)
-        // Go up from ArcConfig.swift -> ArcCore -> Sources -> tooling/arc -> Sources -> ArcCLI -> Resources
+        let currentFileURL = URL(fileURLWithPath: #file)
         let devResourcesURL = currentFileURL
             .deletingLastPathComponent()  // ArcCore
             .deletingLastPathComponent()  // Sources
             .appendingPathComponent("ArcCLI")
             .appendingPathComponent("Resources")
-        arcConfigPath = devResourcesURL.appendingPathComponent("ArcConfiguration.pkl").path
-        
-        if fileManager.fileExists(atPath: arcConfigPath) {
-            return arcConfigPath
-        }
+        candidates.append(devResourcesURL.appendingPathComponent("ArcConfiguration.pkl").path)
 
-        return nil
+        return candidates
     }
 
-    /// Ensures ArcConfiguration.pkl is available in the config directory for Pkl module resolution.
-    ///
-    /// - Parameter configDir: Directory containing the config file.
-    /// - Returns: Path to ArcConfiguration.pkl (either existing or copied).
-    /// - Throws: An error if ArcConfiguration.pkl cannot be found or copied.
-    private static func ensureArcConfigurationPkl(in configDir: String) throws -> String {
+    /// Resolves module search paths so Pkl can find ArcConfiguration.pkl via modulepath.
+    private static func moduleSearchPaths(configPath: URL?) -> [String] {
+        let configDir = configPath?.deletingLastPathComponent().path
+        let candidates = arcConfigurationCandidatePaths(configDir: configDir)
+
+        var paths: [String] = []
+        var seen: Set<String> = []
         let fileManager = FileManager.default
-        let targetPath = (configDir as NSString).appendingPathComponent("ArcConfiguration.pkl")
-        
-        // If it already exists in the config directory, use it
-        if fileManager.fileExists(atPath: targetPath) {
-            return targetPath
+        for candidate in candidates where fileManager.fileExists(atPath: candidate) {
+            let dir = (candidate as NSString).deletingLastPathComponent
+            if !seen.contains(dir) {
+                paths.append(dir)
+                seen.insert(dir)
+            }
         }
-        
-        // Try to find it in the bundle
-        guard let sourcePath = findArcConfigurationPkl() else {
-            throw ArcError.invalidConfiguration("Cannot find ArcConfiguration.pkl in bundle resources")
-        }
-        
-        // Copy it to the config directory so Pkl can resolve it
-        try fileManager.copyItem(atPath: sourcePath, toPath: targetPath)
-        
-        return targetPath
+        return paths
     }
 
     /// Loads the Arc configuration from a Pkl source.
@@ -412,7 +391,15 @@ extension ArcConfig {
     /// - Returns: The loaded configuration.
     /// - Throws: An error if loading or parsing fails.
     public static func loadFrom(source: ModuleSource) async throws -> ArcConfig {
-        try await PklSwift.withEvaluator { evaluator in
+        let modulePaths = moduleSearchPaths(configPath: nil)
+        guard !modulePaths.isEmpty else {
+            throw ArcError.invalidConfiguration(
+                "Cannot find ArcConfiguration.pkl. Install it to /opt/homebrew/share/arc or /usr/local/share/arc."
+            )
+        }
+        var options = PklSwift.EvaluatorOptions.preconfigured
+        options.modulePaths = modulePaths
+        return try await PklSwift.withEvaluator(options: options) { evaluator in
             try await evaluator.evaluateModule(source: source, as: ArcConfig.self)
         }
     }
@@ -431,13 +418,15 @@ extension ArcConfig {
         source: ModuleSource,
         configPath: URL? = nil
     ) async throws -> ArcConfig {
-        // Ensure ArcConfiguration.pkl is available for module resolution
-        if let configPath = configPath {
-            let configDir = configPath.deletingLastPathComponent().path
-            _ = try ensureArcConfigurationPkl(in: configDir)
+        let modulePaths = moduleSearchPaths(configPath: configPath)
+        guard !modulePaths.isEmpty else {
+            throw ArcError.invalidConfiguration(
+                "Cannot find ArcConfiguration.pkl. Install it to /opt/homebrew/share/arc or /usr/local/share/arc."
+            )
         }
-        
-        var config = try await PklSwift.withEvaluator { evaluator in
+        var options = PklSwift.EvaluatorOptions.preconfigured
+        options.modulePaths = modulePaths
+        var config = try await PklSwift.withEvaluator(options: options) { evaluator in
             try await evaluator.evaluateModule(source: source, as: ArcConfig.self)
         }
 

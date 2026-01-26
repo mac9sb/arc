@@ -6,7 +6,7 @@
 /// ## Example Usage
 ///
 /// ```pkl
-/// amends "ArcConfiguration.pkl"
+/// amends "modulepath:/ArcConfiguration.pkl"
 ///
 /// sites {
 ///     new {
