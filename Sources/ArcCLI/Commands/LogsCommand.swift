@@ -167,9 +167,8 @@ public struct LogsCommand: ParsableCommand {
             }
             
             let lastLines = Array(allLines.suffix(50))
-            for (path, line, _) in lastLines {
-                let fileName = (path as NSString).lastPathComponent
-                print("[\(fileName)] \(line)")
+            for (_, line, _) in lastLines {
+                print(line)
             }
         }
     }
