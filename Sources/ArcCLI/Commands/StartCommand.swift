@@ -749,7 +749,8 @@ public struct StartCommand: ParsableCommand {
     private static func setupWatcher(configPath: String, server: HTTPServer, sharedState: SharedState, initialConfig: ArcConfig)
         async -> FileWatcher?
     {
-        guard let watchConfig = initialConfig.watch else { return nil }
+        let watchConfig = initialConfig.watch
+        guard watchConfig.enabled else { return nil }
 
         var watchTargets: [FileWatcher.WatchTarget] = []
 

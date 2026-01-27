@@ -73,7 +73,8 @@ cloudflare: CloudflareTunnel?
 ssh: SshConfig?
 
 /// Global watch configuration.
-watch: WatchConfig?
+/// Enabled by default - set `watch { enabled = false }` to disable.
+watch: WatchConfig = new WatchConfig {}
 
 /// Site configuration (discriminated by kind).
 abstract class Site {
@@ -144,6 +145,11 @@ class ProcessConfig {
 
 /// Global watch configuration.
 class WatchConfig {
+    /// Whether file watching is enabled.
+    ///
+    /// Default: true
+    enabled: Boolean = true
+
     /// Whether to watch config.pkl for changes.
     ///
     /// Default: true

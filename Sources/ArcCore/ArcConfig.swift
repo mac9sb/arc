@@ -41,7 +41,8 @@ public struct ArcConfig: Decodable, Hashable, Sendable {
     public var ssh: SshConfig?
 
     /// Global watch configuration.
-    public var watch: WatchConfig?
+    /// Enabled by default - set `watch { enabled = false }` to disable.
+    public var watch: WatchConfig
 
     public init(
         proxyPort: Int = 8080,
@@ -53,7 +54,7 @@ public struct ArcConfig: Decodable, Hashable, Sendable {
         sites: [Site] = [],
         cloudflare: CloudflareTunnel? = nil,
         ssh: SshConfig? = nil,
-        watch: WatchConfig? = nil,
+        watch: WatchConfig = WatchConfig(),
         processName: String? = nil
     ) {
         self.proxyPort = proxyPort
@@ -246,6 +247,9 @@ public struct ProcessConfig: Decodable, Hashable, Sendable {
 
 /// Global watch configuration.
 public struct WatchConfig: Decodable, Hashable, Sendable {
+    /// Whether file watching is enabled.
+    public var enabled: Bool
+
     /// Whether to watch config.pkl for changes.
     public var watchConfigPkl: Bool
 
@@ -259,11 +263,13 @@ public struct WatchConfig: Decodable, Hashable, Sendable {
     public var cooldownMs: Int
 
     public init(
+        enabled: Bool = true,
         watchConfigPkl: Bool = true,
         followSymlinks: Bool = false,
         debounceMs: Int = 300,
         cooldownMs: Int = 1000
     ) {
+        self.enabled = enabled
         self.watchConfigPkl = watchConfigPkl
         self.followSymlinks = followSymlinks
         self.debounceMs = debounceMs
