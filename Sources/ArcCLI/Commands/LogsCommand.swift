@@ -93,10 +93,22 @@ public struct LogsCommand: ParsableCommand {
             return
         }
 
-        let logPath = "\((config.logDir as NSString).expandingTildeInPath)/arc.log"
+        // Find the running arc process to get its log file name
+        let baseDir = config.baseDir ?? configURL.deletingLastPathComponent().path
+        let pidDir = URL(fileURLWithPath: "\(baseDir)/.pid")
+        let manager = ProcessDescriptorManager(baseDir: pidDir)
+        
+        let descriptors = (try? await manager.listAll()) ?? []
+        let activeDescriptor = descriptors.first { descriptor in
+            ServiceDetector.isProcessRunning(pid: descriptor.pid)
+        }
+        
+        // Use process-specific log file if available, otherwise fall back to arc.log
+        let logFileName = activeDescriptor?.name ?? "arc"
+        let logPath = "\((config.logDir as NSString).expandingTildeInPath)/\(logFileName).log"
 
         if !FileManager.default.fileExists(atPath: logPath) {
-            Noora().warning("Log file not found")
+            Noora().warning("Log file not found: \(logPath)")
             return
         }
 
