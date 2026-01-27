@@ -336,7 +336,9 @@ extension ArcConfig {
         }
 
         candidates.append("/opt/homebrew/share/arc/ArcConfiguration.pkl")
+        candidates.append("/opt/homebrew/share/arc/Arc_ArcCLI.bundle/ArcConfiguration.pkl")
         candidates.append("/usr/local/share/arc/ArcConfiguration.pkl")
+        candidates.append("/usr/local/share/arc/Arc_ArcCLI.bundle/ArcConfiguration.pkl")
 
         // Try to find Resources directory relative to the executable
         let executablePath = ProcessInfo.processInfo.arguments[0]
