@@ -70,19 +70,19 @@ struct ArcConfigTests {
         defer { try? fileManager.removeItem(at: tempDir) }
 
         let resourceURL = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent() // ArcCoreTests
-            .deletingLastPathComponent() // Tests
-            .deletingLastPathComponent() // arc
+            .deletingLastPathComponent()  // ArcCoreTests
+            .deletingLastPathComponent()  // Tests
+            .deletingLastPathComponent()  // arc
             .appendingPathComponent("Sources/ArcCLI/Resources/ArcConfiguration.pkl")
         let arcConfigContents = try String(contentsOf: resourceURL, encoding: .utf8)
         let arcConfigURL = tempDir.appendingPathComponent("ArcConfiguration.pkl")
         try arcConfigContents.write(to: arcConfigURL, atomically: true, encoding: .utf8)
 
         let configContents = """
-        amends "modulepath:/ArcConfiguration.pkl"
+            amends "modulepath:/ArcConfiguration.pkl"
 
-        sites {}
-        """
+            sites {}
+            """
         let configURL = tempDir.appendingPathComponent("config.pkl")
         try configContents.write(to: configURL, atomically: true, encoding: .utf8)
 

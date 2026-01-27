@@ -17,24 +17,24 @@ import Logging
 public struct CorrelationID: Sendable, Hashable, CustomStringConvertible {
     /// The unique identifier string.
     public let value: String
-    
+
     /// Creates a new correlation ID with a random UUID.
     public init() {
         self.value = UUID().uuidString.lowercased()
     }
-    
+
     /// Creates a correlation ID from an existing string value.
     ///
     /// - Parameter value: The correlation ID string, typically from an incoming request header.
     public init(_ value: String) {
         self.value = value
     }
-    
+
     /// Returns the correlation ID as logger metadata.
     public var metadata: Logger.Metadata {
         ["correlation_id": .string(value)]
     }
-    
+
     public var description: String {
         value
     }
@@ -57,7 +57,7 @@ public struct StructuredLogger: Sendable {
     private let logger: Logger
     private let correlationID: CorrelationID?
     private let additionalMetadata: Logger.Metadata
-    
+
     /// Creates a new structured logger.
     ///
     /// - Parameters:
@@ -73,7 +73,7 @@ public struct StructuredLogger: Sendable {
         self.correlationID = correlationID
         self.additionalMetadata = metadata
     }
-    
+
     /// Creates a structured logger from an existing Logger.
     ///
     /// - Parameters:
@@ -89,7 +89,7 @@ public struct StructuredLogger: Sendable {
         self.correlationID = correlationID
         self.additionalMetadata = metadata
     }
-    
+
     /// Returns a new logger with the specified correlation ID.
     ///
     /// - Parameter correlationID: The correlation ID to include in logs.
@@ -101,7 +101,7 @@ public struct StructuredLogger: Sendable {
             metadata: additionalMetadata
         )
     }
-    
+
     /// Returns a new logger with additional metadata.
     ///
     /// - Parameter metadata: Additional metadata to merge.
@@ -117,9 +117,9 @@ public struct StructuredLogger: Sendable {
             metadata: merged
         )
     }
-    
+
     // MARK: - Logging Methods
-    
+
     private func mergedMetadata(_ metadata: Logger.Metadata?) -> Logger.Metadata {
         var result = additionalMetadata
         if let correlationID = correlationID {
@@ -132,7 +132,7 @@ public struct StructuredLogger: Sendable {
         }
         return result
     }
-    
+
     public func trace(
         _ message: @autoclosure () -> Logger.Message,
         metadata: Logger.Metadata? = nil,
@@ -142,7 +142,7 @@ public struct StructuredLogger: Sendable {
     ) {
         logger.trace(message(), metadata: mergedMetadata(metadata), file: file, function: function, line: line)
     }
-    
+
     public func debug(
         _ message: @autoclosure () -> Logger.Message,
         metadata: Logger.Metadata? = nil,
@@ -152,7 +152,7 @@ public struct StructuredLogger: Sendable {
     ) {
         logger.debug(message(), metadata: mergedMetadata(metadata), file: file, function: function, line: line)
     }
-    
+
     public func info(
         _ message: @autoclosure () -> Logger.Message,
         metadata: Logger.Metadata? = nil,
@@ -162,7 +162,7 @@ public struct StructuredLogger: Sendable {
     ) {
         logger.info(message(), metadata: mergedMetadata(metadata), file: file, function: function, line: line)
     }
-    
+
     public func notice(
         _ message: @autoclosure () -> Logger.Message,
         metadata: Logger.Metadata? = nil,
@@ -172,7 +172,7 @@ public struct StructuredLogger: Sendable {
     ) {
         logger.notice(message(), metadata: mergedMetadata(metadata), file: file, function: function, line: line)
     }
-    
+
     public func warning(
         _ message: @autoclosure () -> Logger.Message,
         metadata: Logger.Metadata? = nil,
@@ -182,7 +182,7 @@ public struct StructuredLogger: Sendable {
     ) {
         logger.warning(message(), metadata: mergedMetadata(metadata), file: file, function: function, line: line)
     }
-    
+
     public func error(
         _ message: @autoclosure () -> Logger.Message,
         metadata: Logger.Metadata? = nil,
@@ -192,7 +192,7 @@ public struct StructuredLogger: Sendable {
     ) {
         logger.error(message(), metadata: mergedMetadata(metadata), file: file, function: function, line: line)
     }
-    
+
     public func critical(
         _ message: @autoclosure () -> Logger.Message,
         metadata: Logger.Metadata? = nil,
@@ -210,28 +210,28 @@ public struct StructuredLogger: Sendable {
 public struct LogEntry: Codable, Sendable {
     /// Timestamp of the log entry.
     public let timestamp: Date
-    
+
     /// Log level.
     public let level: String
-    
+
     /// Log message.
     public let message: String
-    
+
     /// Correlation ID for request tracking.
     public let correlationID: String?
-    
+
     /// Additional metadata.
     public let metadata: [String: String]
-    
+
     /// Source file.
     public let file: String?
-    
+
     /// Source function.
     public let function: String?
-    
+
     /// Source line number.
     public let line: UInt?
-    
+
     public init(
         timestamp: Date = Date(),
         level: String,
@@ -251,7 +251,7 @@ public struct LogEntry: Codable, Sendable {
         self.function = function
         self.line = line
     }
-    
+
     /// Returns a JSON representation of the log entry.
     public func toJSON() -> String? {
         let encoder = JSONEncoder()
@@ -270,25 +270,25 @@ public struct LogEntry: Codable, Sendable {
 public struct RequestContext: Sendable {
     /// Unique correlation ID for the request.
     public let correlationID: CorrelationID
-    
+
     /// Request start time.
     public let startTime: Date
-    
+
     /// HTTP method.
     public let method: String
-    
+
     /// Request path.
     public let path: String
-    
+
     /// Request host.
     public let host: String?
-    
+
     /// Client IP address.
     public let clientIP: String?
-    
+
     /// User agent string.
     public let userAgent: String?
-    
+
     /// Creates a new request context.
     public init(
         correlationID: CorrelationID = CorrelationID(),
@@ -307,23 +307,23 @@ public struct RequestContext: Sendable {
         self.clientIP = clientIP
         self.userAgent = userAgent
     }
-    
+
     /// Returns the elapsed time since the request started.
     public var elapsed: TimeInterval {
         Date().timeIntervalSince(startTime)
     }
-    
+
     /// Returns the elapsed time in milliseconds.
     public var elapsedMs: Double {
         elapsed * 1000
     }
-    
+
     /// Returns logger metadata for this request context.
     public var metadata: Logger.Metadata {
         var meta: Logger.Metadata = [
             "correlation_id": .string(correlationID.value),
             "method": .string(method),
-            "path": .string(path)
+            "path": .string(path),
         ]
         if let host = host {
             meta["host"] = .string(host)

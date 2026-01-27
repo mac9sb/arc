@@ -92,18 +92,20 @@ public struct StatusCommand: ParsableCommand {
                     let currentDir = FileManager.default.currentDirectoryPath
                     resolvedPath = (currentDir as NSString).appendingPathComponent(expandedPath)
                 }
-                
+
                 // Load config to get baseDir (same logic as StartCommand)
                 let configURL = URL(fileURLWithPath: resolvedPath)
-                guard let config = try? await ArcConfig.loadFrom(
-                    source: ModuleSource.path(resolvedPath),
-                    configPath: configURL
-                ) else {
+                guard
+                    let config = try? await ArcConfig.loadFrom(
+                        source: ModuleSource.path(resolvedPath),
+                        configPath: configURL
+                    )
+                else {
                     // Fallback to config file directory if config can't be loaded
                     let baseDir = configURL.deletingLastPathComponent().path
                     let pidDir = URL(fileURLWithPath: "\(baseDir)/.pid")
                     let manager = ProcessDescriptorManager(baseDir: pidDir)
-                    
+
                     if let processName = processName {
                         try await Self.showProcessDetails(
                             processName: processName, manager: manager, baseDir: baseDir, verbose: isVerbose)
@@ -112,11 +114,11 @@ public struct StatusCommand: ParsableCommand {
                     }
                     return
                 }
-                
+
                 // Use same baseDir resolution as StartCommand
                 let baseDir = config.baseDir ?? configURL.deletingLastPathComponent().path
                 let pidDir = URL(fileURLWithPath: "\(baseDir)/.pid")
-                
+
                 if isVerbose {
                     Noora().info("Base directory: \(baseDir)")
                     Noora().info("PID directory: \(pidDir.path)")
@@ -147,15 +149,15 @@ public struct StatusCommand: ParsableCommand {
         // Set up signal handler for Ctrl+C
         StatusExitFlag.value = 0
         signal(SIGINT, statusExitSignalHandler)
-        
+
         // Function to build table data
         func buildTableData() async -> TableData {
             // Clean up stale descriptors first
             _ = try? await manager.cleanupStale()
-            
+
             // Get active descriptors
             let activeDescriptors = (try? await manager.listAll()) ?? []
-            
+
             if activeDescriptors.isEmpty {
                 // Return empty table
                 let columns = [
@@ -164,17 +166,17 @@ public struct StatusCommand: ParsableCommand {
                     TableColumn(title: "PORT", width: .auto, alignment: .right),
                     TableColumn(title: "CPU", width: .auto, alignment: .right),
                     TableColumn(title: "RAM", width: .auto, alignment: .right),
-                    TableColumn(title: "UPTIME", width: .auto, alignment: .left)
+                    TableColumn(title: "UPTIME", width: .auto, alignment: .left),
                 ]
                 return TableData(columns: columns, rows: [])
             }
-            
+
             var rows: [[String]] = []
             for descriptor in activeDescriptors {
                 // Check if process is running before trying to get resource usage
                 let isRunning = ServiceDetector.isProcessRunning(pid: descriptor.pid)
                 let statusEmoji = isRunning ? "🟢" : "🔴"
-                
+
                 // Only try to get resource usage if process is running
                 let usage: ProcessResourceUsage?
                 if isRunning {
@@ -182,7 +184,7 @@ public struct StatusCommand: ParsableCommand {
                 } else {
                     usage = nil
                 }
-                
+
                 let cpuPercent = usage?.cpuPercent ?? 0.0
                 let memoryMB = usage?.memoryMB ?? 0.0
                 let uptime = uptimeString(from: descriptor.startedAt)
@@ -196,38 +198,38 @@ public struct StatusCommand: ParsableCommand {
                     uptime,
                 ])
             }
-            
+
             let columns = [
                 TableColumn(title: "NAME", width: .auto, alignment: .left),
                 TableColumn(title: "PID", width: .auto, alignment: .right),
                 TableColumn(title: "PORT", width: .auto, alignment: .right),
                 TableColumn(title: "CPU", width: .auto, alignment: .right),
                 TableColumn(title: "RAM", width: .auto, alignment: .right),
-                TableColumn(title: "UPTIME", width: .auto, alignment: .left)
+                TableColumn(title: "UPTIME", width: .auto, alignment: .left),
             ]
-            
+
             let tableRows = rows.map { row in
                 row.map(TerminalText.init)
             }
-            
+
             return TableData(columns: columns, rows: tableRows)
         }
-        
+
         // Create initial table data
         let initialData = await buildTableData()
-        
+
         // Create async stream for updates
         let updates = AsyncStream<TableData> { continuation in
             Task.detached {
                 while StatusExitFlag.value == 0 && !Task.isCancelled {
                     let tableData = await buildTableData()
                     continuation.yield(tableData)
-                    try? await Task.sleep(nanoseconds: 1_000_000_000) // Update every second
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)  // Update every second
                 }
                 continuation.finish()
             }
         }
-        
+
         // Display live updating table
         await Noora().table(initialData, updates: updates)
     }
@@ -267,15 +269,15 @@ public struct StatusCommand: ParsableCommand {
         // Set up signal handler for Ctrl+C
         StatusExitFlag.value = 0
         signal(SIGINT, statusExitSignalHandler)
-        
+
         // Function to build table data
         func buildTableData() async -> TableData {
             var processRows: [[String]] = []
-            
+
             // Check if process is still running
             let isRunning = ServiceDetector.isProcessRunning(pid: descriptor.pid)
             let usage = isRunning ? manager.getResourceUsage(pid: descriptor.pid) : nil
-            
+
             // Main arc process
             let mainCpu = usage?.cpuPercent ?? 0.0
             let mainRam = usage?.memoryMB ?? 0.0
@@ -286,9 +288,9 @@ public struct StatusCommand: ParsableCommand {
                 String(descriptor.pid),
                 String(format: "%.1f%%", mainCpu),
                 String(format: "%.1f MB", mainRam),
-                "-", // Domain for main process
-                sshStatus, // SSH status
-                uptimeString(from: descriptor.startedAt)
+                "-",  // Domain for main process
+                sshStatus,  // SSH status
+                uptimeString(from: descriptor.startedAt),
             ])
 
             // Find child processes and match them to sites
@@ -298,7 +300,7 @@ public struct StatusCommand: ParsableCommand {
             for site in config.sites {
                 var sitePid: pid_t? = nil
                 var siteUsage: ProcessResourceUsage? = nil
-                
+
                 switch site {
                 case .app(let appSite):
                     // Try to find process by port first (most reliable)
@@ -313,16 +315,16 @@ public struct StatusCommand: ParsableCommand {
                             let grandchildren = ProcessDescriptorManager.getChildProcesses(parentPid: childPid)
                             allChildPids.append(contentsOf: grandchildren)
                         }
-                        
+
                         for pid in allChildPids {
                             if let childUsage = manager.getResourceUsage(pid: pid) {
                                 // Check if command matches site name or executable
                                 let cmd = childUsage.command.lowercased()
                                 let siteNameLower = site.name.lowercased()
                                 // Match by site name, or by common executable patterns
-                                if cmd.contains(siteNameLower) || 
-                                   cmd.contains(siteNameLower.replacingOccurrences(of: "-", with: "")) ||
-                                   cmd.contains("guestlist") || cmd.contains("guest-list") {
+                                if cmd.contains(siteNameLower) || cmd.contains(siteNameLower.replacingOccurrences(of: "-", with: "")) || cmd.contains("guestlist")
+                                    || cmd.contains("guest-list")
+                                {
                                     sitePid = pid
                                     siteUsage = childUsage
                                     break
@@ -330,7 +332,7 @@ public struct StatusCommand: ParsableCommand {
                             }
                         }
                     }
-                    
+
                     // Get health status with timeout to prevent hanging/segfault
                     // If we found a PID, show health status; otherwise show unknown
                     let health: String
@@ -340,14 +342,16 @@ public struct StatusCommand: ParsableCommand {
                                 group.addTask {
                                     let proxyHandler = ProxyHandler(config: config)
                                     let result = await proxyHandler.checkHealth(appSite: appSite)
-                                    _ = proxyHandler // Keep alive
+                                    _ = proxyHandler  // Keep alive
                                     return result
                                 }
                                 group.addTask {
-                                    try await Task.sleep(nanoseconds: 2_000_000_000) // 2 second timeout
+                                    try await Task.sleep(nanoseconds: 2_000_000_000)  // 2 second timeout
                                     throw TimeoutError()
                                 }
-                                let result = try await group.next()!
+                                guard let result = try await group.next() else {
+                                    throw TimeoutError()
+                                }
                                 group.cancelAll()
                                 return result
                             }
@@ -360,21 +364,21 @@ public struct StatusCommand: ParsableCommand {
                         // No PID found - process might not be running
                         health = "❌"
                     }
-                    
+
                     let siteCpu = siteUsage?.cpuPercent ?? 0.0
                     let siteRam = siteUsage?.memoryMB ?? 0.0
                     let sitePidStr = sitePid.map { String($0) } ?? "-"
-                    
+
                     processRows.append([
                         "  └─ " + site.name + " " + health,
                         sitePidStr,
                         String(format: "%.1f%%", siteCpu),
                         String(format: "%.1f MB", siteRam),
                         site.domain,
-                        "-", // SSH not applicable to individual sites
-                        "port:\(appSite.port)"
+                        "-",  // SSH not applicable to individual sites
+                        "port:\(appSite.port)",
                     ])
-                    
+
                 case .static(let staticSite):
                     let outputPath = resolvePath(
                         staticSite.outputPath,
@@ -383,15 +387,15 @@ public struct StatusCommand: ParsableCommand {
                     )
                     let exists = FileManager.default.fileExists(atPath: outputPath)
                     let health = exists ? "✅" : "⚠️"
-                    
+
                     processRows.append([
                         "  └─ " + site.name + " " + health,
                         "-",
                         "-",
                         "-",
                         site.domain,
-                        "-", // SSH not applicable to individual sites
-                        "static"
+                        "-",  // SSH not applicable to individual sites
+                        "static",
                     ])
                 }
             }
@@ -401,12 +405,12 @@ public struct StatusCommand: ParsableCommand {
                 let cloudflaredPath = (tunnel.cloudflaredPath as NSString).expandingTildeInPath
                 let cloudflaredRunning = Self.checkCloudflaredRunning(executablePath: cloudflaredPath)
                 let cloudflaredStatus = cloudflaredRunning ? "🟢" : "🔴"
-                
+
                 // Try to find cloudflared PID
                 var cloudflaredPid: String = "-"
                 var cloudflaredCpu: Double = 0.0
                 var cloudflaredRam: Double = 0.0
-                
+
                 for childPid in childPids {
                     if let usage = manager.getResourceUsage(pid: childPid) {
                         if usage.command.contains("cloudflared") {
@@ -417,15 +421,15 @@ public struct StatusCommand: ParsableCommand {
                         }
                     }
                 }
-                
+
                 processRows.append([
                     "  └─ cloudflared " + cloudflaredStatus,
                     cloudflaredPid,
                     String(format: "%.1f%%", cloudflaredCpu),
                     String(format: "%.1f MB", cloudflaredRam),
-                    "-", // Domain not applicable to cloudflared itself
-                    "-", // SSH not applicable to cloudflared
-                    "tunnel"
+                    "-",  // Domain not applicable to cloudflared itself
+                    "-",  // SSH not applicable to cloudflared
+                    "tunnel",
                 ])
             }
 
@@ -436,49 +440,49 @@ public struct StatusCommand: ParsableCommand {
                 TableColumn(title: "RAM", width: .auto, alignment: .right),
                 TableColumn(title: "DOMAIN", width: .auto, alignment: .left),
                 TableColumn(title: "SSH", width: .auto, alignment: .center),
-                TableColumn(title: "INFO", width: .auto, alignment: .left)
+                TableColumn(title: "INFO", width: .auto, alignment: .left),
             ]
-            
+
             let rows = processRows.map { row in
                 row.map(TerminalText.init)
             }
-            
+
             return TableData(columns: columns, rows: rows)
         }
-        
+
         // Create initial table data
         let initialData = await buildTableData()
-        
+
         // Create async stream for updates
         let updates = AsyncStream<TableData> { continuation in
             Task.detached {
                 while StatusExitFlag.value == 0 && !Task.isCancelled {
                     let tableData = await buildTableData()
                     continuation.yield(tableData)
-                    try? await Task.sleep(nanoseconds: 1_000_000_000) // Update every second
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)  // Update every second
                 }
                 continuation.finish()
             }
         }
-        
+
         // Display live updating table
         await Noora().table(initialData, updates: updates)
     }
-    
+
     /// Checks if cloudflared is running by looking for the process.
     private static func checkCloudflaredRunning(executablePath: String) -> Bool {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
         task.arguments = ["-f", executablePath]
-        
+
         let pipe = Pipe()
         task.standardOutput = pipe
         task.standardError = Pipe()
-        
+
         do {
             try task.run()
             task.waitUntilExit()
-            
+
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             let output = String(data: data, encoding: .utf8) ?? ""
             return !output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -488,7 +492,7 @@ public struct StatusCommand: ParsableCommand {
     }
 
     // MARK: - Helpers
-    
+
     private struct TimeoutError: Error {}
 
     private static func resolvePath(_ path: String, baseDir: String?, workingDir: String?) -> String {

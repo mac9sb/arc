@@ -5,22 +5,22 @@ import Logging
 public struct HealthCheckResult: Codable, Sendable {
     /// The name of the site or service.
     public let name: String
-    
+
     /// Whether the check passed.
     public let healthy: Bool
-    
+
     /// Optional status message.
     public let message: String?
-    
+
     /// Response time in milliseconds (for HTTP checks).
     public let responseTimeMs: Double?
-    
+
     /// HTTP status code (for HTTP checks).
     public let statusCode: Int?
-    
+
     /// Timestamp of the check.
     public let timestamp: Date
-    
+
     public init(
         name: String,
         healthy: Bool,
@@ -42,10 +42,10 @@ public struct HealthCheckResult: Codable, Sendable {
 public enum HealthStatus: String, Codable, Sendable {
     /// All services are healthy.
     case healthy
-    
+
     /// Some services are degraded but operational.
     case degraded
-    
+
     /// One or more critical services are unhealthy.
     case unhealthy
 }
@@ -65,25 +65,25 @@ public enum HealthStatus: String, Codable, Sendable {
 public actor HealthMonitor {
     /// Maximum number of history entries to keep per site.
     private let historyLimit: Int
-    
+
     /// Health check history by site name.
     private var history: [String: [HealthCheckResult]] = [:]
-    
+
     /// Current status by site name.
     private var currentStatus: [String: HealthCheckResult] = [:]
-    
+
     /// Consecutive failure counts by site name.
     private var consecutiveFailures: [String: Int] = [:]
-    
+
     /// Logger for health monitoring.
     private let logger: Logger
-    
+
     /// Threshold for consecutive failures before marking as degraded.
     private let degradedThreshold: Int
-    
+
     /// Threshold for consecutive failures before marking as unhealthy.
     private let unhealthyThreshold: Int
-    
+
     /// Creates a new health monitor.
     ///
     /// - Parameters:
@@ -100,30 +100,30 @@ public actor HealthMonitor {
         self.unhealthyThreshold = unhealthyThreshold
         self.logger = Logger(label: "arc.health")
     }
-    
+
     /// Records a health check result.
     ///
     /// - Parameter result: The health check result to record.
     public func record(_ result: HealthCheckResult) {
         // Update current status
         currentStatus[result.name] = result
-        
+
         // Update history
         var siteHistory = history[result.name] ?? []
         siteHistory.append(result)
-        
+
         // Trim history if needed
         if siteHistory.count > historyLimit {
             siteHistory = Array(siteHistory.suffix(historyLimit))
         }
         history[result.name] = siteHistory
-        
+
         // Update consecutive failure count
         if result.healthy {
             consecutiveFailures[result.name] = 0
         } else {
             consecutiveFailures[result.name, default: 0] += 1
-            
+
             let failures = consecutiveFailures[result.name] ?? 0
             if failures >= unhealthyThreshold {
                 logger.error("Site \(result.name) is unhealthy after \(failures) consecutive failures")
@@ -132,16 +132,16 @@ public actor HealthMonitor {
             }
         }
     }
-    
+
     /// Returns the overall health status across all monitored sites.
     public func overallStatus() -> HealthStatus {
         if currentStatus.isEmpty {
             return .healthy
         }
-        
+
         var hasUnhealthy = false
         var hasDegraded = false
-        
+
         for (name, _) in currentStatus {
             let failures = consecutiveFailures[name] ?? 0
             if failures >= unhealthyThreshold {
@@ -150,7 +150,7 @@ public actor HealthMonitor {
                 hasDegraded = true
             }
         }
-        
+
         if hasUnhealthy {
             return .unhealthy
         } else if hasDegraded {
@@ -159,7 +159,7 @@ public actor HealthMonitor {
             return .healthy
         }
     }
-    
+
     /// Returns the status for a specific site.
     ///
     /// - Parameter name: The site name.
@@ -174,7 +174,7 @@ public actor HealthMonitor {
             return .healthy
         }
     }
-    
+
     /// Returns the current health check result for a site.
     ///
     /// - Parameter name: The site name.
@@ -182,12 +182,12 @@ public actor HealthMonitor {
     public func currentResult(for name: String) -> HealthCheckResult? {
         currentStatus[name]
     }
-    
+
     /// Returns all current health check results.
     public func allCurrentResults() -> [HealthCheckResult] {
         Array(currentStatus.values)
     }
-    
+
     /// Returns the health check history for a site.
     ///
     /// - Parameter name: The site name.
@@ -195,7 +195,7 @@ public actor HealthMonitor {
     public func historyFor(name: String) -> [HealthCheckResult] {
         history[name] ?? []
     }
-    
+
     /// Returns uptime percentage for a site based on history.
     ///
     /// - Parameter name: The site name.
@@ -204,55 +204,56 @@ public actor HealthMonitor {
         guard let siteHistory = history[name], !siteHistory.isEmpty else {
             return nil
         }
-        
+
         let healthyCount = siteHistory.filter(\.healthy).count
         return Double(healthyCount) / Double(siteHistory.count) * 100
     }
-    
+
     /// Returns average response time for a site based on history.
     ///
     /// - Parameter name: The site name.
     /// - Returns: Average response time in ms, or nil if no data.
     public func averageResponseTime(for name: String) -> Double? {
         guard let siteHistory = history[name] else { return nil }
-        
+
         let responseTimes = siteHistory.compactMap(\.responseTimeMs)
         guard !responseTimes.isEmpty else { return nil }
-        
+
         return responseTimes.reduce(0, +) / Double(responseTimes.count)
     }
-    
+
     /// Returns a summary of health status for all sites.
     public func summary() -> HealthSummary {
         let results = allCurrentResults()
         let overallStatus = overallStatus()
-        
+
         var siteStatuses: [SiteHealthSummary] = []
         for result in results {
             let status = statusFor(name: result.name)
             let uptime = uptimePercentage(for: result.name)
             let avgResponseTime = averageResponseTime(for: result.name)
             let failures = consecutiveFailures[result.name] ?? 0
-            
-            siteStatuses.append(SiteHealthSummary(
-                name: result.name,
-                status: status,
-                lastCheck: result.timestamp,
-                healthy: result.healthy,
-                uptimePercentage: uptime,
-                averageResponseTimeMs: avgResponseTime,
-                consecutiveFailures: failures,
-                lastMessage: result.message
-            ))
+
+            siteStatuses.append(
+                SiteHealthSummary(
+                    name: result.name,
+                    status: status,
+                    lastCheck: result.timestamp,
+                    healthy: result.healthy,
+                    uptimePercentage: uptime,
+                    averageResponseTimeMs: avgResponseTime,
+                    consecutiveFailures: failures,
+                    lastMessage: result.message
+                ))
         }
-        
+
         return HealthSummary(
             overallStatus: overallStatus,
             sites: siteStatuses,
             timestamp: Date()
         )
     }
-    
+
     /// Clears all health history.
     public func clearHistory() {
         history = [:]

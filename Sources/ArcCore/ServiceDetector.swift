@@ -255,7 +255,8 @@ public struct ServiceDetector {
 
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             let output = String(data: data, encoding: .utf8) ?? ""
-            return output
+            return
+                output
                 .trimmingCharacters(in: .whitespacesAndNewlines)
                 .split(separator: "\n")
                 .compactMap { Int32($0.trimmingCharacters(in: .whitespaces)) }

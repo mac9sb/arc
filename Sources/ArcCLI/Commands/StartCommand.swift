@@ -39,9 +39,9 @@ private func installShutdownHandlers() {
 private final class ShutdownSignal: @unchecked Sendable {
     var shouldShutdown: Bool {
         // Check the global flag
-        return GlobalShutdownFlag.value == 1
+        GlobalShutdownFlag.value == 1
     }
-    
+
     func reset() {
         GlobalShutdownFlag.value = 0
     }
@@ -198,7 +198,7 @@ public struct StartCommand: ParsableCommand {
             let currentDir = FileManager.default.currentDirectoryPath
             resolvedConfigPath = (currentDir as NSString).appendingPathComponent(configPath)
         }
-        
+
         if verbose {
             Noora().info("Config path: \(resolvedConfigPath)")
         }
@@ -257,9 +257,9 @@ public struct StartCommand: ParsableCommand {
 
         // Wait until shutdown signal is received
         while !shutdownSignal.shouldShutdown {
-            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+            try await Task.sleep(nanoseconds: 100_000_000)  // 100ms
         }
-        
+
         if verbose {
             Noora().info("Shutting down gracefully...")
         }
@@ -357,12 +357,13 @@ public struct StartCommand: ParsableCommand {
             executable = "/usr/bin/env"
             argsPrefix = [argv0]
         }
-        var args = argsPrefix + [
-            "start",
-            "--config", configPath,
-            "--internal-server",
-            "--process-name", processName
-        ]
+        var args =
+            argsPrefix + [
+                "start",
+                "--config", configPath,
+                "--internal-server",
+                "--process-name", processName,
+            ]
         if let logFile {
             args += ["--log-file", logFile]
         }
@@ -484,7 +485,7 @@ public struct StartCommand: ParsableCommand {
             let currentDir = FileManager.default.currentDirectoryPath
             resolvedConfigPath = (currentDir as NSString).appendingPathComponent(configPath)
         }
-        
+
         if verbose {
             Noora().info("Config path: \(resolvedConfigPath)")
         }
@@ -542,9 +543,9 @@ public struct StartCommand: ParsableCommand {
                             "Log file: \(logPath)",
                             "PID file: \(baseDir)/.pid/arc-\(processName).pid",
                         ]))
-                } else {
-                    Noora().success("Background process started: \(descriptor.name) (PID: \(descriptor.pid))")
-                }
+            } else {
+                Noora().success("Background process started: \(descriptor.name) (PID: \(descriptor.pid))")
+            }
             fflush(stdout)
             fflush(stderr)
         }
@@ -558,9 +559,9 @@ public struct StartCommand: ParsableCommand {
 
         // Wait until shutdown signal is received
         while !shutdownSignal.shouldShutdown {
-            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+            try await Task.sleep(nanoseconds: 100_000_000)  // 100ms
         }
-        
+
         watcher?.stop()
         server.stop()
         await sharedState.stopCloudflared()
@@ -611,7 +612,7 @@ public struct StartCommand: ParsableCommand {
         }
 
         do {
-                if let pid = try await state.startCloudflared(config: config) {
+            if let pid = try await state.startCloudflared(config: config) {
                 if verbose {
                     Noora().success(
                         .alert(
@@ -626,7 +627,7 @@ public struct StartCommand: ParsableCommand {
             }
         } catch let error as CloudflaredConfigError {
             Noora().error(error.errorAlert)
-            throw error // Re-throw to crash the server
+            throw error  // Re-throw to crash the server
         } catch {
             // Always show cloudflared errors as they're critical
             Noora().error(
@@ -635,7 +636,7 @@ public struct StartCommand: ParsableCommand {
                     takeaways: [
                         "Error: \(error.localizedDescription)"
                     ]))
-            throw error // Re-throw to crash the server
+            throw error  // Re-throw to crash the server
         }
     }
 

@@ -219,10 +219,14 @@ public final class FileWatcher: @unchecked Sendable {
     }
 
     private func cleanup() {
-        debounceTimers.values.forEach { $0.cancel() }
+        for timer in debounceTimers.values {
+            timer.cancel()
+        }
         debounceTimers.removeAll()
 
-        dispatchSources.forEach { $0.cancel() }
+        for source in dispatchSources {
+            source.cancel()
+        }
         dispatchSources.removeAll()
 
         lastTriggerTime.removeAll()

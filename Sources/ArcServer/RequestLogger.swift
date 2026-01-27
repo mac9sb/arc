@@ -18,7 +18,7 @@ import Logging
 struct RequestLogger: Sendable {
     private let logger: StructuredLogger
     private let logLevel: Logger.Level
-    
+
     /// Creates a new request logger.
     ///
     /// - Parameters:
@@ -28,7 +28,7 @@ struct RequestLogger: Sendable {
         self.logger = StructuredLogger(label: label)
         self.logLevel = logLevel
     }
-    
+
     /// Logs an incoming HTTP request.
     ///
     /// Creates a request context with a new correlation ID and logs
@@ -44,7 +44,7 @@ struct RequestLogger: Sendable {
         } else {
             correlationID = CorrelationID()
         }
-        
+
         let context = RequestContext(
             correlationID: correlationID,
             startTime: Date(),
@@ -54,20 +54,20 @@ struct RequestLogger: Sendable {
             clientIP: request.headers["x-forwarded-for"] ?? request.headers["x-real-ip"],
             userAgent: request.headers["user-agent"]
         )
-        
+
         logger.withCorrelationID(correlationID).info(
             "Request received",
             metadata: [
                 "method": .string(request.method),
                 "path": .string(request.path),
                 "host": .string(request.host ?? "-"),
-                "content_length": .string(request.headers["content-length"] ?? "0")
+                "content_length": .string(request.headers["content-length"] ?? "0"),
             ]
         )
-        
+
         return context
     }
-    
+
     /// Logs an outgoing HTTP response.
     ///
     /// Logs response details including status code, duration, and any
@@ -78,7 +78,7 @@ struct RequestLogger: Sendable {
     ///   - context: The request context from `logRequest`.
     func logResponse(_ response: HTTPResponse, context: RequestContext) {
         let durationMs = context.elapsedMs
-        
+
         // Determine log level based on status code
         let statusCode = response.statusCode
         let level: Logger.Level
@@ -89,9 +89,9 @@ struct RequestLogger: Sendable {
         } else {
             level = logLevel
         }
-        
+
         let requestLogger = logger.withCorrelationID(context.correlationID)
-        
+
         switch level {
         case .error:
             requestLogger.error(
@@ -110,7 +110,7 @@ struct RequestLogger: Sendable {
             )
         }
     }
-    
+
     private func responseMetadata(
         _ response: HTTPResponse,
         context: RequestContext,
@@ -121,7 +121,7 @@ struct RequestLogger: Sendable {
             "path": .string(context.path),
             "status": .string("\(response.statusCode)"),
             "duration_ms": .string(String(format: "%.2f", durationMs)),
-            "content_length": .string("\(response.body.count)")
+            "content_length": .string("\(response.body.count)"),
         ]
     }
 }
@@ -135,34 +135,34 @@ struct RequestLogger: Sendable {
 public actor RequestMetrics {
     /// Total number of requests received.
     public private(set) var totalRequests: Int = 0
-    
+
     /// Number of successful requests (2xx/3xx).
     public private(set) var successfulRequests: Int = 0
-    
+
     /// Number of client errors (4xx).
     public private(set) var clientErrors: Int = 0
-    
+
     /// Number of server errors (5xx).
     public private(set) var serverErrors: Int = 0
-    
+
     /// Total request duration in milliseconds.
     public private(set) var totalDurationMs: Double = 0
-    
+
     /// Minimum request duration in milliseconds.
     public private(set) var minDurationMs: Double = .infinity
-    
+
     /// Maximum request duration in milliseconds.
     public private(set) var maxDurationMs: Double = 0
-    
+
     /// Requests per path.
     public private(set) var requestsByPath: [String: Int] = [:]
-    
+
     /// Errors per path.
     public private(set) var errorsByPath: [String: Int] = [:]
-    
+
     /// Creates a new RequestMetrics instance.
     public init() {}
-    
+
     /// Records a completed request.
     ///
     /// - Parameters:
@@ -172,18 +172,18 @@ public actor RequestMetrics {
     public func record(path: String, statusCode: Int, durationMs: Double) {
         totalRequests += 1
         totalDurationMs += durationMs
-        
+
         if durationMs < minDurationMs {
             minDurationMs = durationMs
         }
         if durationMs > maxDurationMs {
             maxDurationMs = durationMs
         }
-        
+
         // Normalize path (remove query string, limit segments)
         let normalizedPath = normalizePath(path)
         requestsByPath[normalizedPath, default: 0] += 1
-        
+
         if statusCode >= 200 && statusCode < 400 {
             successfulRequests += 1
         } else if statusCode >= 400 && statusCode < 500 {
@@ -194,17 +194,17 @@ public actor RequestMetrics {
             errorsByPath[normalizedPath, default: 0] += 1
         }
     }
-    
+
     /// Returns the average request duration in milliseconds.
     public var averageDurationMs: Double {
         totalRequests > 0 ? totalDurationMs / Double(totalRequests) : 0
     }
-    
+
     /// Returns the error rate as a percentage.
     public var errorRate: Double {
         totalRequests > 0 ? Double(clientErrors + serverErrors) / Double(totalRequests) * 100 : 0
     }
-    
+
     /// Returns a snapshot of current metrics.
     public func snapshot() -> MetricsSnapshot {
         MetricsSnapshot(
@@ -220,7 +220,7 @@ public actor RequestMetrics {
             errorPaths: Array(errorsByPath.sorted { $0.value > $1.value }.prefix(5))
         )
     }
-    
+
     /// Resets all metrics to initial values.
     public func reset() {
         totalRequests = 0
@@ -233,11 +233,11 @@ public actor RequestMetrics {
         requestsByPath = [:]
         errorsByPath = [:]
     }
-    
+
     private func normalizePath(_ path: String) -> String {
         // Remove query string
         let basePath = path.split(separator: "?").first.map(String.init) ?? path
-        
+
         // Limit path depth for aggregation
         let segments = basePath.split(separator: "/").prefix(3)
         return "/" + segments.joined(separator: "/")
@@ -256,13 +256,13 @@ public struct MetricsSnapshot: Codable, Sendable {
     public let errorRate: Double
     public let topPaths: [(String, Int)]
     public let errorPaths: [(String, Int)]
-    
+
     enum CodingKeys: String, CodingKey {
         case totalRequests, successfulRequests, clientErrors, serverErrors
         case averageDurationMs, minDurationMs, maxDurationMs, errorRate
         case topPaths, errorPaths
     }
-    
+
     public init(
         totalRequests: Int,
         successfulRequests: Int,
@@ -286,7 +286,7 @@ public struct MetricsSnapshot: Codable, Sendable {
         self.topPaths = topPaths
         self.errorPaths = errorPaths
     }
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         totalRequests = try container.decode(Int.self, forKey: .totalRequests)
@@ -297,20 +297,20 @@ public struct MetricsSnapshot: Codable, Sendable {
         minDurationMs = try container.decode(Double.self, forKey: .minDurationMs)
         maxDurationMs = try container.decode(Double.self, forKey: .maxDurationMs)
         errorRate = try container.decode(Double.self, forKey: .errorRate)
-        
+
         let topPathsDict = try container.decode([[String: String]].self, forKey: .topPaths)
         topPaths = topPathsDict.compactMap { dict in
             guard let path = dict["path"], let countStr = dict["count"], let count = Int(countStr) else { return nil }
             return (path, count)
         }
-        
+
         let errorPathsDict = try container.decode([[String: String]].self, forKey: .errorPaths)
         errorPaths = errorPathsDict.compactMap { dict in
             guard let path = dict["path"], let countStr = dict["count"], let count = Int(countStr) else { return nil }
             return (path, count)
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(totalRequests, forKey: .totalRequests)
@@ -321,10 +321,10 @@ public struct MetricsSnapshot: Codable, Sendable {
         try container.encode(minDurationMs, forKey: .minDurationMs)
         try container.encode(maxDurationMs, forKey: .maxDurationMs)
         try container.encode(errorRate, forKey: .errorRate)
-        
+
         let topPathsDicts = topPaths.map { ["path": $0.0, "count": String($0.1)] }
         try container.encode(topPathsDicts, forKey: .topPaths)
-        
+
         let errorPathsDicts = errorPaths.map { ["path": $0.0, "count": String($0.1)] }
         try container.encode(errorPathsDicts, forKey: .errorPaths)
     }

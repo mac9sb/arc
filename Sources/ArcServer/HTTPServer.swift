@@ -71,7 +71,7 @@ public final class HTTPServer: @unchecked Sendable {
     func route(request: HTTPRequest) async -> HTTPResponse {
         let startTime = Date()
         let requestContext = requestLogger.logRequest(request)
-        
+
         // Handle metrics endpoint (works on any host)
         if request.path == "/metrics" || request.path == "/arc/metrics" {
             let response = await handleMetrics()
@@ -79,7 +79,7 @@ public final class HTTPServer: @unchecked Sendable {
             await recordMetrics(request: request, response: response, startTime: startTime)
             return response
         }
-        
+
         guard let hostHeader = request.host else {
             let response = HTTPResponse(status: 400, reason: "Bad Request", headers: [:], body: Data())
             requestLogger.logResponse(response, context: requestContext)
@@ -108,12 +108,12 @@ public final class HTTPServer: @unchecked Sendable {
         case .app(let appSite):
             response = await proxyHandler.handle(request: request, appSite: appSite)
         }
-        
+
         requestLogger.logResponse(response, context: requestContext)
         await recordMetrics(request: request, response: response, startTime: startTime)
         return response
     }
-    
+
     private func recordMetrics(request: HTTPRequest, response: HTTPResponse, startTime: Date) async {
         let durationMs = Date().timeIntervalSince(startTime) * 1000
         await requestMetrics.record(
@@ -122,22 +122,22 @@ public final class HTTPServer: @unchecked Sendable {
             durationMs: durationMs
         )
     }
-    
+
     private func handleMetrics() async -> HTTPResponse {
         let snapshot = await requestMetrics.snapshot()
-        
+
         // Get process metrics
         let baseDir = config.baseDir ?? FileManager.default.currentDirectoryPath
         let pidDir = URL(fileURLWithPath: "\(baseDir)/.pid")
         let manager = ProcessDescriptorManager(baseDir: pidDir)
-        
+
         var processMetrics: [[String: Any]] = []
         if let descriptors = try? await manager.listAll() {
             for descriptor in descriptors.filter({ ServiceDetector.isProcessRunning(pid: $0.pid) }) {
                 let usage = manager.getResourceUsage(pid: descriptor.pid)
                 let uptime = Date().timeIntervalSince(descriptor.startedAt)
                 let children = ProcessDescriptorManager.getChildProcesses(parentPid: descriptor.pid)
-                
+
                 processMetrics.append([
                     "name": descriptor.name,
                     "pid": descriptor.pid,
@@ -145,11 +145,11 @@ public final class HTTPServer: @unchecked Sendable {
                     "uptime_seconds": Int(uptime),
                     "cpu_percent": usage?.cpuPercent ?? 0,
                     "memory_mb": usage?.memoryMB ?? 0,
-                    "child_processes": children.count
+                    "child_processes": children.count,
                 ])
             }
         }
-        
+
         // Build response JSON
         let responseData: [String: Any] = [
             "timestamp": ISO8601DateFormatter().string(from: Date()),
@@ -165,16 +165,18 @@ public final class HTTPServer: @unchecked Sendable {
                 "max_duration_ms": snapshot.maxDurationMs,
                 "error_rate": snapshot.errorRate,
                 "top_paths": snapshot.topPaths.map { ["path": $0.0, "count": $0.1] },
-                "error_paths": snapshot.errorPaths.map { ["path": $0.0, "count": $0.1] }
+                "error_paths": snapshot.errorPaths.map { ["path": $0.0, "count": $0.1] },
             ],
-            "processes": processMetrics
+            "processes": processMetrics,
         ]
-        
-        guard let jsonData = try? JSONSerialization.data(
-            withJSONObject: responseData,
-            options: [.prettyPrinted, .sortedKeys]
-        ),
-        let jsonString = String(data: jsonData, encoding: .utf8) else {
+
+        guard
+            let jsonData = try? JSONSerialization.data(
+                withJSONObject: responseData,
+                options: [.prettyPrinted, .sortedKeys]
+            ),
+            let jsonString = String(data: jsonData, encoding: .utf8)
+        else {
             return HTTPResponse(
                 status: 500,
                 reason: "Internal Server Error",
@@ -182,7 +184,7 @@ public final class HTTPServer: @unchecked Sendable {
                 body: Data("Failed to serialize metrics".utf8)
             )
         }
-        
+
         return HTTPResponse(
             status: 200,
             reason: "OK",

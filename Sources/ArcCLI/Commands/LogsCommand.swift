@@ -98,9 +98,9 @@ public struct LogsCommand: ParsableCommand {
         let pidDir = URL(fileURLWithPath: "\(baseDir)/.pid")
         let manager = ProcessDescriptorManager(baseDir: pidDir)
         let logDir = (config.logDir as NSString).expandingTildeInPath
-        
+
         var logPaths: [String] = []
-        
+
         // Add arc server log
         let descriptors = (try? await manager.listAll()) ?? []
         let activeDescriptor = descriptors.first { descriptor in
@@ -112,7 +112,7 @@ public struct LogsCommand: ParsableCommand {
                 logPaths.append(arcLogPath)
             }
         }
-        
+
         // Add logs for all managed app processes
         for site in config.sites {
             switch site {
@@ -126,7 +126,7 @@ public struct LogsCommand: ParsableCommand {
                 break
             }
         }
-        
+
         if logPaths.isEmpty {
             Noora().warning("No log files found in \(logDir)")
             return
@@ -144,7 +144,7 @@ public struct LogsCommand: ParsableCommand {
         } else {
             // Merge and show last 50 lines from all logs
             var allLines: [(path: String, line: String, timestamp: Date?)] = []
-            
+
             for logPath in logPaths {
                 if let content = try? String(contentsOfFile: logPath, encoding: .utf8) {
                     let lines = content.components(separatedBy: "\n")
@@ -157,22 +157,22 @@ public struct LogsCommand: ParsableCommand {
                     }
                 }
             }
-            
+
             // Sort by timestamp if available, otherwise by file order
             allLines.sort { line1, line2 in
                 if let ts1 = line1.timestamp, let ts2 = line2.timestamp {
                     return ts1 < ts2
                 }
-                return false // Keep original order if no timestamps
+                return false  // Keep original order if no timestamps
             }
-            
+
             let lastLines = Array(allLines.suffix(50))
             for (_, line, _) in lastLines {
                 print(line)
             }
         }
     }
-    
+
     /// Extracts timestamp from a log line (ISO8601 format).
     private static func extractTimestamp(from line: String) -> Date? {
         // Look for ISO8601 timestamp pattern: YYYY-MM-DDTHH:MM:SS

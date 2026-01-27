@@ -111,6 +111,7 @@ public actor ProcessDescriptorManager {
     ///   - config: The arc configuration.
     ///   - configPath: Path to the config file.
     /// - Returns: The created descriptor.
+    /// - Throws: An error if the descriptor cannot be written.
     public func create(
         name: String,
         config: ArcConfig,
@@ -135,6 +136,7 @@ public actor ProcessDescriptorManager {
     ///
     /// - Parameter name: The process name.
     /// - Returns: The descriptor, or nil if not found.
+    /// - Throws: An error if the descriptor cannot be read.
     public func read(name: String) throws -> ProcessDescriptor? {
         let path = descriptorPath(for: name)
 
@@ -152,6 +154,7 @@ public actor ProcessDescriptorManager {
     ///
     /// - Parameter pid: The process ID.
     /// - Returns: The descriptor, or nil if not found.
+    /// - Throws: An error if the descriptors cannot be listed.
     public func read(pid: pid_t) throws -> ProcessDescriptor? {
         let descriptors = try listAll()
         return descriptors.first { $0.pid == pid }
@@ -193,6 +196,7 @@ public actor ProcessDescriptorManager {
     /// Deletes a descriptor by process name.
     ///
     /// - Parameter name: The process name.
+    /// - Throws: An error if the descriptor cannot be deleted.
     public func delete(name: String) throws {
         let path = descriptorPath(for: name)
 
@@ -215,7 +219,7 @@ public actor ProcessDescriptorManager {
         guard ServiceDetector.isProcessRunning(pid: pid) else {
             return nil
         }
-        
+
         // Use ps to get process information
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/bin/ps")
@@ -229,7 +233,7 @@ public actor ProcessDescriptorManager {
         do {
             try task.run()
             task.waitUntilExit()
-            
+
             // If ps failed, return nil
             guard task.terminationStatus == 0 else {
                 return nil
@@ -251,7 +255,7 @@ public actor ProcessDescriptorManager {
             else {
                 return nil
             }
-            
+
             let pid = pid_t(pidInt)
 
             // Command is the rest of the line
@@ -298,7 +302,7 @@ public actor ProcessDescriptorManager {
             // Parse output (skip header line "PID")
             let lines = output.components(separatedBy: "\n").filter { !$0.isEmpty }
             var childPids: [pid_t] = []
-            for line in lines.dropFirst() { // Skip header
+            for line in lines.dropFirst() {  // Skip header
                 let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
                 if let pidInt = Int32(trimmed) {
                     childPids.append(pid_t(pidInt))

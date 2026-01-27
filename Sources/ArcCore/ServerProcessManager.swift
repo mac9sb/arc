@@ -121,12 +121,12 @@ public class ServerProcessManager {
             try ensureLogDirectoryExists()
         } catch {
             throw ArcError.invalidConfiguration(
-                "Failed to create log directory at \(logDir): \(error.localizedDescription). " +
-                "Ensure the directory exists and is writable, or change logDir in config.pkl to a user-writable location.")
+                "Failed to create log directory at \(logDir): \(error.localizedDescription). "
+                    + "Ensure the directory exists and is writable, or change logDir in config.pkl to a user-writable location.")
         }
 
         let logFileURL = URL(fileURLWithPath: logPath)
-        
+
         // Create log file if it doesn't exist
         if !FileManager.default.fileExists(atPath: logPath) {
             guard FileManager.default.createFile(atPath: logPath, contents: nil, attributes: nil) else {
@@ -134,13 +134,14 @@ public class ServerProcessManager {
                     "Failed to create log file at \(logPath). Ensure the log directory is writable.")
             }
         }
-        
+
         guard let outputHandle = try? FileHandle(forWritingTo: logFileURL),
-              let errorHandle = try? FileHandle(forWritingTo: logFileURL) else {
+            let errorHandle = try? FileHandle(forWritingTo: logFileURL)
+        else {
             throw ArcError.invalidConfiguration(
                 "Failed to open log file at \(logPath) for writing. Ensure the file is writable.")
         }
-        
+
         task.standardOutput = outputHandle
         task.standardError = errorHandle
 
@@ -158,13 +159,14 @@ public class ServerProcessManager {
 
         // Verify process is still running after a short delay
         // This catches immediate crashes (like missing env vars)
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-        
+        try await Task.sleep(nanoseconds: 500_000_000)  // 0.5 seconds
+
         guard ServiceDetector.isProcessRunning(pid: pid) else {
             // Process exited immediately - read error log
             var errorMessage = "Process exited immediately after startup"
             if let logContents = try? String(contentsOfFile: logPath, encoding: .utf8),
-               !logContents.isEmpty {
+                !logContents.isEmpty
+            {
                 // Get last few lines of log for context
                 let lines = logContents.components(separatedBy: .newlines)
                 let lastLines = lines.suffix(5).joined(separator: "\n")
@@ -259,7 +261,7 @@ public class ServerProcessManager {
         env: [String: String] = [:]
     ) async throws -> pid_t {
         stopProcess(name: name)
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        try await Task.sleep(nanoseconds: 500_000_000)  // 0.5 seconds
         return try await startProcess(
             name: name,
             command: command,

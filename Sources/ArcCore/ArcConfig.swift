@@ -365,7 +365,8 @@ extension ArcConfig {
 
         // Try relative to Sources/ArcCLI (for development)
         let currentFileURL = URL(fileURLWithPath: #file)
-        let devResourcesURL = currentFileURL
+        let devResourcesURL =
+            currentFileURL
             .deletingLastPathComponent()  // ArcCore
             .deletingLastPathComponent()  // Sources
             .appendingPathComponent("ArcCLI")

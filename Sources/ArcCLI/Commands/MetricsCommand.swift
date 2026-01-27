@@ -179,7 +179,14 @@ public struct MetricsCommand: ParsableCommand {
                 // Perform HTTP health check
                 let startTime = Date()
                 do {
-                    let healthURL = appSite.healthURL()!
+                    guard let healthURL = appSite.healthURL() else {
+                        result = HealthCheckResult(
+                            name: appSite.name,
+                            healthy: false,
+                            message: "Health URL not configured"
+                        )
+                        return
+                    }
                     var request = URLRequest(url: healthURL)
                     request.timeoutInterval = 5
 
@@ -212,12 +219,12 @@ public struct MetricsCommand: ParsableCommand {
                 let status = result.healthy ? "✓" : "✗"
                 let statusColor = result.healthy ? "\u{001B}[32m" : "\u{001B}[31m"
                 let reset = "\u{001B}[0m"
-                
+
                 var details = result.message ?? ""
                 if let responseTime = result.responseTimeMs {
                     details += " (\(String(format: "%.1f", responseTime))ms)"
                 }
-                
+
                 print("\(statusColor)\(status)\(reset) \(result.name): \(details)")
             }
         }
@@ -227,7 +234,8 @@ public struct MetricsCommand: ParsableCommand {
             encoder.dateEncodingStrategy = .iso8601
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             if let data = try? encoder.encode(healthResults),
-               let jsonString = String(data: data, encoding: .utf8) {
+                let jsonString = String(data: data, encoding: .utf8)
+            {
                 print(jsonString)
             }
         }
@@ -255,7 +263,7 @@ public struct MetricsCommand: ParsableCommand {
                 "port": descriptor.proxyPort,
                 "uptime_seconds": Int(uptime),
                 "cpu_percent": usage?.cpuPercent ?? 0,
-                "memory_mb": usage?.memoryMB ?? 0
+                "memory_mb": usage?.memoryMB ?? 0,
             ]
 
             // Get child process count
@@ -270,11 +278,12 @@ public struct MetricsCommand: ParsableCommand {
                 "timestamp": ISO8601DateFormatter().string(from: Date()),
                 "processes": processMetrics,
                 "sites": config.sites.count,
-                "proxy_port": config.proxyPort
+                "proxy_port": config.proxyPort,
             ]
-            
+
             if let data = try? JSONSerialization.data(withJSONObject: summary, options: [.prettyPrinted, .sortedKeys]),
-               let jsonString = String(data: data, encoding: .utf8) {
+                let jsonString = String(data: data, encoding: .utf8)
+            {
                 print(jsonString)
             }
         } else {

@@ -218,9 +218,9 @@ public actor SharedState {
         )
 
         // Wait a moment for process to start, then verify it's running
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        try await Task.sleep(nanoseconds: 500_000_000)  // 0.5 seconds
         let isRunning = ServiceDetector.isProcessRunning(pid: pid)
-        
+
         if !isRunning {
             let logPath = "\((config.logDir as NSString).expandingTildeInPath)/cloudflared.log"
             throw CloudflaredConfigError.processExitedImmediately(pid: pid, logPath: logPath)

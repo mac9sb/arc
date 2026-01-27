@@ -182,21 +182,21 @@ public struct DoctorCommand: ParsableCommand {
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             let output = String(data: data, encoding: .utf8) ?? ""
 
-            if task.terminationStatus == 0 {
-                let version = output.trimmingCharacters(in: .whitespacesAndNewlines)
-                    .components(separatedBy: "\n").first ?? "unknown"
-                return CheckResult(
-                    name: "Swift",
-                    status: .ok,
-                    details: verbose ? version : nil
-                )
-            } else {
+            guard task.terminationStatus == 0 else {
                 return CheckResult(
                     name: "Swift",
                     status: .error("Swift not found. Install Xcode or Swift toolchain."),
                     details: nil
                 )
             }
+            let version =
+                output.trimmingCharacters(in: .whitespacesAndNewlines)
+                .components(separatedBy: "\n").first ?? "unknown"
+            return CheckResult(
+                name: "Swift",
+                status: .ok,
+                details: verbose ? version : nil
+            )
         } catch {
             return CheckResult(
                 name: "Swift",
@@ -222,20 +222,19 @@ public struct DoctorCommand: ParsableCommand {
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             let output = String(data: data, encoding: .utf8) ?? ""
 
-            if task.terminationStatus == 0 {
-                let version = output.trimmingCharacters(in: .whitespacesAndNewlines)
-                return CheckResult(
-                    name: "Pkl",
-                    status: .ok,
-                    details: verbose ? version : nil
-                )
-            } else {
+            guard task.terminationStatus == 0 else {
                 return CheckResult(
                     name: "Pkl",
                     status: .warning("Pkl not found. Install from https://pkl-lang.org for config validation."),
                     details: nil
                 )
             }
+            let version = output.trimmingCharacters(in: .whitespacesAndNewlines)
+            return CheckResult(
+                name: "Pkl",
+                status: .ok,
+                details: verbose ? version : nil
+            )
         } catch {
             return CheckResult(
                 name: "Pkl",
@@ -271,7 +270,7 @@ public struct DoctorCommand: ParsableCommand {
                 source: ModuleSource.path(resolvedPath),
                 configPath: configURL
             )
-            
+
             var details: [String] = []
             if verbose {
                 details.append("Proxy port: \(config.proxyPort)")
@@ -280,7 +279,7 @@ public struct DoctorCommand: ParsableCommand {
                     details.append("  - \(site.name) (\(site.domain))")
                 }
             }
-            
+
             return CheckResult(
                 name: "Config",
                 status: .ok,
@@ -299,7 +298,7 @@ public struct DoctorCommand: ParsableCommand {
         let commonPaths = [
             "/opt/homebrew/bin/cloudflared",
             "/usr/local/bin/cloudflared",
-            "/usr/bin/cloudflared"
+            "/usr/bin/cloudflared",
         ]
 
         // Check PATH first
@@ -317,7 +316,8 @@ public struct DoctorCommand: ParsableCommand {
 
             if task.terminationStatus == 0 {
                 let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                let path = String(data: data, encoding: .utf8)?
+                let path =
+                    String(data: data, encoding: .utf8)?
                     .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 return CheckResult(
                     name: "Cloudflared",
@@ -387,13 +387,7 @@ public struct DoctorCommand: ParsableCommand {
                 }
             }
 
-            if inUse.isEmpty {
-                return CheckResult(
-                    name: "Ports",
-                    status: .ok,
-                    details: verbose ? "All configured ports are available" : nil
-                )
-            } else {
+            guard inUse.isEmpty else {
                 let portList = inUse.map { "\($0.0) (\($0.1))" }.joined(separator: ", ")
                 return CheckResult(
                     name: "Ports",
@@ -401,6 +395,11 @@ public struct DoctorCommand: ParsableCommand {
                     details: verbose ? "This may be expected if Arc is already running" : nil
                 )
             }
+            return CheckResult(
+                name: "Ports",
+                status: .ok,
+                details: verbose ? "All configured ports are available" : nil
+            )
         } catch {
             return CheckResult(
                 name: "Ports",
@@ -463,19 +462,18 @@ public struct DoctorCommand: ParsableCommand {
             let lines = output.components(separatedBy: "\n").filter { !$0.isEmpty }
             let uninitialized = lines.filter { $0.hasPrefix("-") }
 
-            if uninitialized.isEmpty {
-                return CheckResult(
-                    name: "Submodules",
-                    status: .ok,
-                    details: verbose ? "\(lines.count) submodule(s) initialized" : nil
-                )
-            } else {
+            guard uninitialized.isEmpty else {
                 return CheckResult(
                     name: "Submodules",
                     status: .warning("\(uninitialized.count) submodule(s) not initialized"),
                     details: verbose ? "Run: git submodule update --init --recursive" : nil
                 )
             }
+            return CheckResult(
+                name: "Submodules",
+                status: .ok,
+                details: verbose ? "\(lines.count) submodule(s) initialized" : nil
+            )
         } catch {
             return CheckResult(
                 name: "Submodules",
@@ -512,36 +510,33 @@ public struct DoctorCommand: ParsableCommand {
 
         // Check if directory exists
         var isDirectory: ObjCBool = false
-        if FileManager.default.fileExists(atPath: expandedLogDir, isDirectory: &isDirectory) {
-            if isDirectory.boolValue {
-                // Check if writable
-                if FileManager.default.isWritableFile(atPath: expandedLogDir) {
-                    return CheckResult(
-                        name: "Log Directory",
-                        status: .ok,
-                        details: verbose ? "Writable at: \(expandedLogDir)" : nil
-                    )
-                } else {
-                    return CheckResult(
-                        name: "Log Directory",
-                        status: .warning("Log directory not writable: \(expandedLogDir)"),
-                        details: verbose ? "Run: sudo mkdir -p \(expandedLogDir) && sudo chown $USER \(expandedLogDir)" : nil
-                    )
-                }
-            } else {
-                return CheckResult(
-                    name: "Log Directory",
-                    status: .error("Log path exists but is not a directory: \(expandedLogDir)"),
-                    details: nil
-                )
-            }
-        } else {
+        guard FileManager.default.fileExists(atPath: expandedLogDir, isDirectory: &isDirectory) else {
             return CheckResult(
                 name: "Log Directory",
                 status: .warning("Log directory does not exist: \(expandedLogDir)"),
                 details: verbose ? "Will be created on first run, or run: sudo mkdir -p \(expandedLogDir) && sudo chown $USER \(expandedLogDir)" : nil
             )
         }
+        guard isDirectory.boolValue else {
+            return CheckResult(
+                name: "Log Directory",
+                status: .error("Log path exists but is not a directory: \(expandedLogDir)"),
+                details: nil
+            )
+        }
+        // Check if writable
+        guard FileManager.default.isWritableFile(atPath: expandedLogDir) else {
+            return CheckResult(
+                name: "Log Directory",
+                status: .warning("Log directory not writable: \(expandedLogDir)"),
+                details: verbose ? "Run: sudo mkdir -p \(expandedLogDir) && sudo chown $USER \(expandedLogDir)" : nil
+            )
+        }
+        return CheckResult(
+            name: "Log Directory",
+            status: .ok,
+            details: verbose ? "Writable at: \(expandedLogDir)" : nil
+        )
     }
 
     // MARK: - Helpers
