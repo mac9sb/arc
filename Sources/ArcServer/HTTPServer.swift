@@ -14,6 +14,7 @@ public final class HTTPServer: @unchecked Sendable {
     private var config: ArcConfig
     private var staticHandler: StaticFileHandler
     private var proxyHandler: ProxyHandler
+    private let requestMetrics: RequestMetrics
 
     /// Creates a new HTTP server.
     ///
@@ -22,6 +23,7 @@ public final class HTTPServer: @unchecked Sendable {
         self.config = config
         self.staticHandler = StaticFileHandler(config: config)
         self.proxyHandler = ProxyHandler(config: config)
+        self.requestMetrics = RequestMetrics()
         self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
     }
 
@@ -65,27 +67,119 @@ public final class HTTPServer: @unchecked Sendable {
     }
 
     func route(request: HTTPRequest) async -> HTTPResponse {
+        let startTime = Date()
+        
+        // Handle metrics endpoint (works on any host)
+        if request.path == "/metrics" || request.path == "/arc/metrics" {
+            return await handleMetrics()
+        }
+        
         guard let hostHeader = request.host else {
-            return HTTPResponse(status: 400, reason: "Bad Request", headers: [:], body: Data())
+            let response = HTTPResponse(status: 400, reason: "Bad Request", headers: [:], body: Data())
+            await recordMetrics(request: request, response: response, startTime: startTime)
+            return response
         }
 
         let host = hostHeader.split(separator: ":").first.map(String.init) ?? hostHeader
 
         guard let site = config.sites.first(where: { $0.domain == host }) else {
-            return HTTPResponse(
+            let response = HTTPResponse(
                 status: 404,
                 reason: "Not Found",
                 headers: [:],
                 body: Data("Route not found".utf8)
             )
+            await recordMetrics(request: request, response: response, startTime: startTime)
+            return response
         }
 
+        let response: HTTPResponse
         switch site {
         case .static(let staticSite):
-            return staticHandler.handle(request: request, site: staticSite, baseDir: config.baseDir)
+            response = staticHandler.handle(request: request, site: staticSite, baseDir: config.baseDir)
         case .app(let appSite):
-            return await proxyHandler.handle(request: request, appSite: appSite)
+            response = await proxyHandler.handle(request: request, appSite: appSite)
         }
+        
+        await recordMetrics(request: request, response: response, startTime: startTime)
+        return response
+    }
+    
+    private func recordMetrics(request: HTTPRequest, response: HTTPResponse, startTime: Date) async {
+        let durationMs = Date().timeIntervalSince(startTime) * 1000
+        await requestMetrics.record(
+            path: request.path,
+            statusCode: response.statusCode,
+            durationMs: durationMs
+        )
+    }
+    
+    private func handleMetrics() async -> HTTPResponse {
+        let snapshot = await requestMetrics.snapshot()
+        
+        // Get process metrics
+        let baseDir = config.baseDir ?? FileManager.default.currentDirectoryPath
+        let pidDir = URL(fileURLWithPath: "\(baseDir)/.pid")
+        let manager = ProcessDescriptorManager(baseDir: pidDir)
+        
+        var processMetrics: [[String: Any]] = []
+        if let descriptors = try? await manager.listAll() {
+            for descriptor in descriptors.filter({ ServiceDetector.isProcessRunning(pid: $0.pid) }) {
+                let usage = manager.getResourceUsage(pid: descriptor.pid)
+                let uptime = Date().timeIntervalSince(descriptor.startedAt)
+                let children = ProcessDescriptorManager.getChildProcesses(parentPid: descriptor.pid)
+                
+                processMetrics.append([
+                    "name": descriptor.name,
+                    "pid": descriptor.pid,
+                    "port": descriptor.proxyPort,
+                    "uptime_seconds": Int(uptime),
+                    "cpu_percent": usage?.cpuPercent ?? 0,
+                    "memory_mb": usage?.memoryMB ?? 0,
+                    "child_processes": children.count
+                ])
+            }
+        }
+        
+        // Build response JSON
+        let responseData: [String: Any] = [
+            "timestamp": ISO8601DateFormatter().string(from: Date()),
+            "proxy_port": config.proxyPort,
+            "sites": config.sites.count,
+            "request_metrics": [
+                "total_requests": snapshot.totalRequests,
+                "successful_requests": snapshot.successfulRequests,
+                "client_errors": snapshot.clientErrors,
+                "server_errors": snapshot.serverErrors,
+                "average_duration_ms": snapshot.averageDurationMs,
+                "min_duration_ms": snapshot.minDurationMs,
+                "max_duration_ms": snapshot.maxDurationMs,
+                "error_rate": snapshot.errorRate,
+                "top_paths": snapshot.topPaths.map { ["path": $0.0, "count": $0.1] },
+                "error_paths": snapshot.errorPaths.map { ["path": $0.0, "count": $0.1] }
+            ],
+            "processes": processMetrics
+        ]
+        
+        guard let jsonData = try? JSONSerialization.data(
+            withJSONObject: responseData,
+            options: [.prettyPrinted, .sortedKeys]
+        ),
+        let jsonString = String(data: jsonData, encoding: .utf8) else {
+            return HTTPResponse(
+                status: 500,
+                reason: "Internal Server Error",
+                headers: ["Content-Type": "text/plain"],
+                body: Data("Failed to serialize metrics".utf8)
+            )
+        }
+        
+        return HTTPResponse(
+            status: 200,
+            reason: "OK",
+            headers: ["Content-Type": "application/json"],
+            body: Data(jsonString.utf8)
+        )
     }
 }
 
