@@ -93,40 +93,102 @@ public struct LogsCommand: ParsableCommand {
             return
         }
 
-        // Find the running arc process to get its log file name
+        // Find all log files: arc server + all managed processes
         let baseDir = config.baseDir ?? configURL.deletingLastPathComponent().path
         let pidDir = URL(fileURLWithPath: "\(baseDir)/.pid")
         let manager = ProcessDescriptorManager(baseDir: pidDir)
+        let logDir = (config.logDir as NSString).expandingTildeInPath
         
+        var logPaths: [String] = []
+        
+        // Add arc server log
         let descriptors = (try? await manager.listAll()) ?? []
         let activeDescriptor = descriptors.first { descriptor in
             ServiceDetector.isProcessRunning(pid: descriptor.pid)
         }
+        if let descriptor = activeDescriptor {
+            let arcLogPath = "\(logDir)/\(descriptor.name).log"
+            if FileManager.default.fileExists(atPath: arcLogPath) {
+                logPaths.append(arcLogPath)
+            }
+        }
         
-        // Use process-specific log file if available, otherwise fall back to arc.log
-        let logFileName = activeDescriptor?.name ?? "arc"
-        let logPath = "\((config.logDir as NSString).expandingTildeInPath)/\(logFileName).log"
-
-        if !FileManager.default.fileExists(atPath: logPath) {
-            Noora().warning("Log file not found: \(logPath)")
+        // Add logs for all managed app processes
+        for site in config.sites {
+            switch site {
+            case .app:
+                let siteLogPath = "\(logDir)/\(site.name).log"
+                if FileManager.default.fileExists(atPath: siteLogPath) {
+                    logPaths.append(siteLogPath)
+                }
+            case .static:
+                // Static sites don't have separate process logs, but requests are logged to arc server log
+                break
+            }
+        }
+        
+        if logPaths.isEmpty {
+            Noora().warning("No log files found in \(logDir)")
             return
         }
 
         if follow {
+            // Use tail -f on all log files
             let tailProcess = Process()
             tailProcess.executableURL = URL(fileURLWithPath: "/usr/bin/tail")
-            tailProcess.arguments = ["-f", logPath]
+            tailProcess.arguments = ["-f"] + logPaths
             tailProcess.standardOutput = FileHandle.standardOutput
             tailProcess.standardError = FileHandle.standardError
             try tailProcess.run()
             tailProcess.waitUntilExit()
         } else {
-            let content = try String(contentsOfFile: logPath, encoding: .utf8)
-            let lines = content.components(separatedBy: "\n")
-            let lastLines = Array(lines.suffix(50))
-
-            Noora().info("Log file: \(logPath)")
-            print(lastLines.joined(separator: "\n"))
+            // Merge and show last 50 lines from all logs
+            var allLines: [(path: String, line: String, timestamp: Date?)] = []
+            
+            for logPath in logPaths {
+                if let content = try? String(contentsOfFile: logPath, encoding: .utf8) {
+                    let lines = content.components(separatedBy: "\n")
+                    for line in lines {
+                        if !line.isEmpty {
+                            // Try to extract timestamp from log line (ISO8601 format)
+                            let timestamp = extractTimestamp(from: line)
+                            allLines.append((path: logPath, line: line, timestamp: timestamp))
+                        }
+                    }
+                }
+            }
+            
+            // Sort by timestamp if available, otherwise by file order
+            allLines.sort { line1, line2 in
+                if let ts1 = line1.timestamp, let ts2 = line2.timestamp {
+                    return ts1 < ts2
+                }
+                return false // Keep original order if no timestamps
+            }
+            
+            let lastLines = Array(allLines.suffix(50))
+            for (path, line, _) in lastLines {
+                let fileName = (path as NSString).lastPathComponent
+                print("[\(fileName)] \(line)")
+            }
         }
+    }
+    
+    /// Extracts timestamp from a log line (ISO8601 format).
+    private static func extractTimestamp(from line: String) -> Date? {
+        // Look for ISO8601 timestamp pattern: YYYY-MM-DDTHH:MM:SS
+        let pattern = #"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}"#
+        if let range = line.range(of: pattern, options: .regularExpression) {
+            let timestampString = String(line[range])
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = formatter.date(from: timestampString) {
+                return date
+            }
+            // Try without fractional seconds
+            formatter.formatOptions = [.withInternetDateTime]
+            return formatter.date(from: timestampString)
+        }
+        return nil
     }
 }

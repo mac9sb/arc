@@ -15,6 +15,7 @@ public final class HTTPServer: @unchecked Sendable {
     private var staticHandler: StaticFileHandler
     private var proxyHandler: ProxyHandler
     private let requestMetrics: RequestMetrics
+    private let requestLogger: RequestLogger
 
     /// Creates a new HTTP server.
     ///
@@ -24,6 +25,7 @@ public final class HTTPServer: @unchecked Sendable {
         self.staticHandler = StaticFileHandler(config: config)
         self.proxyHandler = ProxyHandler(config: config)
         self.requestMetrics = RequestMetrics()
+        self.requestLogger = RequestLogger(label: "arc.http")
         self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
     }
 
@@ -68,14 +70,19 @@ public final class HTTPServer: @unchecked Sendable {
 
     func route(request: HTTPRequest) async -> HTTPResponse {
         let startTime = Date()
+        let requestContext = requestLogger.logRequest(request)
         
         // Handle metrics endpoint (works on any host)
         if request.path == "/metrics" || request.path == "/arc/metrics" {
-            return await handleMetrics()
+            let response = await handleMetrics()
+            requestLogger.logResponse(response, context: requestContext)
+            await recordMetrics(request: request, response: response, startTime: startTime)
+            return response
         }
         
         guard let hostHeader = request.host else {
             let response = HTTPResponse(status: 400, reason: "Bad Request", headers: [:], body: Data())
+            requestLogger.logResponse(response, context: requestContext)
             await recordMetrics(request: request, response: response, startTime: startTime)
             return response
         }
@@ -89,6 +96,7 @@ public final class HTTPServer: @unchecked Sendable {
                 headers: [:],
                 body: Data("Route not found".utf8)
             )
+            requestLogger.logResponse(response, context: requestContext)
             await recordMetrics(request: request, response: response, startTime: startTime)
             return response
         }
@@ -101,6 +109,7 @@ public final class HTTPServer: @unchecked Sendable {
             response = await proxyHandler.handle(request: request, appSite: appSite)
         }
         
+        requestLogger.logResponse(response, context: requestContext)
         await recordMetrics(request: request, response: response, startTime: startTime)
         return response
     }
