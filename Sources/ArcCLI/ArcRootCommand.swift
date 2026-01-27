@@ -16,6 +16,8 @@ public struct ArcRootCommand: ParsableCommand {
             StopCommand.self,
             StatusCommand.self,
             LogsCommand.self,
+            DoctorCommand.self,
+            MetricsCommand.self,
         ]
     )
 }

@@ -1,0 +1,45 @@
+/// Arc configuration for dynamic applications.
+///
+/// This example shows how to configure app sites with
+/// process management and health checks.
+amends "modulepath:/ArcConfiguration.pkl"
+
+proxyPort = 8080
+
+sites {
+    /// API server
+    new AppSite {
+        name = "api"
+        domain = "api.localhost"
+        port = 8001
+        healthPath = "/health"
+        process {
+            workingDir = "apps/api"
+            executable = ".build/release/API"
+            /// Optional: environment variables
+            env {
+                ["DATABASE_URL"] = "postgres://localhost/mydb"
+                ["LOG_LEVEL"] = "info"
+            }
+        }
+    }
+    
+    /// Web application
+    new AppSite {
+        name = "web"
+        domain = "localhost"
+        port = 8002
+        healthPath = "/health"
+        process {
+            workingDir = "apps/web"
+            executable = ".build/release/Web"
+        }
+    }
+}
+
+/// Optional: Configure file watching
+watch {
+    watchConfigPkl = true
+    debounceMs = 300
+    cooldownMs = 1000
+}

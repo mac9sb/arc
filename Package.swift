@@ -79,5 +79,13 @@ let package = Package(
                 .product(name: "Testing", package: "swift-testing"),
             ]
         ),
+        .testTarget(
+            name: "ArcIntegrationTests",
+            dependencies: [
+                "ArcCore",
+                "ArcServer",
+                .product(name: "Testing", package: "swift-testing"),
+            ]
+        ),
     ]
 )

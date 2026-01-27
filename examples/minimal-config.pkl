@@ -1,0 +1,13 @@
+/// Minimal Arc configuration example.
+///
+/// This is the simplest possible configuration - a single static site.
+/// Copy this file to your project root as `config.pkl` and customize.
+amends "modulepath:/ArcConfiguration.pkl"
+
+sites {
+    new StaticSite {
+        name = "my-site"
+        domain = "localhost"
+        outputPath = ".output"
+    }
+}
