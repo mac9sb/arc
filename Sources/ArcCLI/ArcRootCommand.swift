@@ -9,7 +9,7 @@ public struct ArcRootCommand: ParsableCommand {
     public static let configuration = CommandConfiguration(
         commandName: "arc",
         abstract: "Arc - Server Management Tool",
-        version: "1.0.0",
+        version: "0.9.0",
         subcommands: [
             InitializeCommand.self,
             StartCommand.self,
