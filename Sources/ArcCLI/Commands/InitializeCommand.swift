@@ -144,9 +144,9 @@ public struct InitializeCommand: ParsableCommand {
     // MARK: - Config Generation
 
     private func generateArcManifest(in baseDir: String, resourcesPath: String) throws {
-        let templatePath = (resourcesPath as NSString).appendingPathComponent("ArcManifest.swift.template")
+        let templatePath = (resourcesPath as NSString).appendingPathComponent("Arc.swift.template")
         let templateContent = try String(contentsOfFile: templatePath, encoding: .utf8)
-        let destPath = (baseDir as NSString).appendingPathComponent("ArcManifest.swift")
+        let destPath = (baseDir as NSString).appendingPathComponent("Arc.swift")
         try templateContent.write(toFile: destPath, atomically: true, encoding: .utf8)
     }
 

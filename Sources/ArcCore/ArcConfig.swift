@@ -109,9 +109,8 @@ public struct ArcConfig: Hashable, Sendable {
             region: region,
             processName: processName,
             sites: Sites(services: services, pages: pages),
-            cloudflare: cloudflare,
-            ssh: ssh,
-            watch: watch
+            watch: watch,
+            extensions: Extensions(cloudflare: cloudflare, ssh: ssh)
         )
     }
 

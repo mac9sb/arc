@@ -4,7 +4,7 @@ import ArcDescription
 public enum ArcManifestLoader {
     /// Loads an `ArcConfiguration` from a Swift manifest file and converts it to `ArcConfig`.
     ///
-    /// - Parameter path: Path to `ArcManifest.swift` or a directory containing it.
+    /// - Parameter path: Path to `Arc.swift` or a directory containing it.
     /// - Returns: Loaded `ArcConfig` with `baseDir` inferred if missing.
     public static func load(from path: String) throws -> ArcConfig {
         let manifestPath = try resolveManifestPath(path)
@@ -197,7 +197,7 @@ private func resolveManifestPath(_ inputPath: String) throws -> String {
             """
             Manifest not found at: \(resolvedPath)
 
-            Create an ArcManifest.swift file in your project root.
+            Create an Arc.swift file in your project root.
             See Documentation.docc/Examples/ for examples, or start with:
 
             import ArcDescription
@@ -213,13 +213,13 @@ private func resolveManifestPath(_ inputPath: String) throws -> String {
     }
 
     if isDirectory.boolValue {
-        let manifestPath = (resolvedPath as NSString).appendingPathComponent("ArcManifest.swift")
+        let manifestPath = (resolvedPath as NSString).appendingPathComponent("Arc.swift")
         guard FileManager.default.fileExists(atPath: manifestPath) else {
             throw ArcError.invalidConfiguration(
                 """
-                ArcManifest.swift not found in directory: \(resolvedPath)
+                Arc.swift not found in directory: \(resolvedPath)
 
-                Create ArcManifest.swift in this directory.
+                Create Arc.swift in this directory.
                 See Documentation.docc/Examples/ for examples.
                 """
             )
@@ -234,17 +234,9 @@ private func resolveManifestPath(_ inputPath: String) throws -> String {
 
 private func findArcDescriptionSearchPaths() -> (modulePaths: [String], libraryPaths: [String]) {
     let fileManager = FileManager.default
-    var modulePaths: [String] = []
-    var libraryPaths: [String] = []
-    var seen: Set<String> = []
 
-    func addCandidate(_ path: String) {
-        guard !seen.contains(path) else { return }
-        if containsArcDescriptionModule(at: path) || containsArcDescriptionLibrary(at: path) {
-            modulePaths.append(path)
-            libraryPaths.append(path)
-            seen.insert(path)
-        }
+    func checkCandidate(_ path: String) -> Bool {
+        containsArcDescriptionModule(at: path) || containsArcDescriptionLibrary(at: path)
     }
 
     // Runtime installation candidates (relative to executable).
@@ -260,7 +252,12 @@ private func findArcDescriptionSearchPaths() -> (modulePaths: [String], libraryP
         executableDir.deletingLastPathComponent().appendingPathComponent("share/arc/lib").path,
     ]
 
-    runtimeCandidates.forEach(addCandidate)
+    for candidate in runtimeCandidates {
+        if checkCandidate(candidate) {
+            let modulePath = (candidate as NSString).appendingPathComponent("Modules")
+            return ([modulePath], [candidate])
+        }
+    }
 
     // Development candidates - search common locations
     let currentDir = fileManager.currentDirectoryPath
@@ -269,37 +266,28 @@ private func findArcDescriptionSearchPaths() -> (modulePaths: [String], libraryP
     // Check current directory and parent directories for tooling/arc
     var searchURL = currentDirURL
     for _ in 0..<5 {  // Search up to 5 levels up
-        // Check explicit known build locations first
         let toolingArcBuild = searchURL.appendingPathComponent("tooling/arc/.build")
 
-        // Add known build directory structures directly
-        let knownPaths = [
+        // Prefer release over debug to avoid mixing build configurations
+        let preferredPaths = [
             toolingArcBuild.appendingPathComponent("release").path,
             toolingArcBuild.appendingPathComponent("arm64-apple-macosx/release").path,
             toolingArcBuild.appendingPathComponent("debug").path,
             toolingArcBuild.appendingPathComponent("arm64-apple-macosx/debug").path,
         ]
 
-        for path in knownPaths {
-            if fileManager.fileExists(atPath: path) {
-                addCandidate(path)
+        // Return the first valid path found (don't mix multiple build dirs)
+        for path in preferredPaths {
+            if fileManager.fileExists(atPath: path) && checkCandidate(path) {
+                let modulePath = (path as NSString).appendingPathComponent("Modules")
+                return ([modulePath], [path])
             }
         }
 
-        // Also enumerate to catch other architectures
-        if fileManager.fileExists(atPath: toolingArcBuild.path) {
-            if let enumerator = fileManager.enumerator(at: toolingArcBuild, includingPropertiesForKeys: nil) {
-                for case let url as URL in enumerator {
-                    if url.lastPathComponent == "debug" || url.lastPathComponent == "release" {
-                        addCandidate(url.path)
-                    }
-                }
-            }
-        }
         searchURL = searchURL.deletingLastPathComponent()
     }
 
-    return (modulePaths, libraryPaths)
+    return ([], [])
 }
 
 private func containsArcDescriptionModule(at path: String) -> Bool {

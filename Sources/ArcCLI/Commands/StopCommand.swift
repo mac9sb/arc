@@ -52,7 +52,7 @@ public struct StopCommand: ParsableCommand {
     ///
     /// - Throws: An error if process stopping fails.
     public func run() throws {
-        let configPath = "ArcManifest.swift"
+        let configPath = "Arc.swift"
         let processName = name
         let stopAll = all
 

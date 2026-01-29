@@ -6,7 +6,7 @@ import Testing
 /// Integration tests for ArcConfig.
 ///
 /// Tests configuration parsing, site matching, domain routing logic,
-/// and config validation without requiring Pkl CLI.
+/// and config validation.
 @Suite("ArcConfig Integration Tests")
 struct ArcConfigIntegrationTests {
 

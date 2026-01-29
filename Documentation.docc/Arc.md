@@ -22,14 +22,13 @@ Arc uses a Swift manifest named `ArcManifest.swift` for configuration. See the <
 
 ### Swift Manifests (New)
 
-Arc now uses native Swift for configuration instead of Pkl. This provides:
+Arc now uses native Swift for configuration . This provides:
 
 - **Type Safety**: Catch errors at compile time
 - **No External Dependencies**: Just the Swift toolchain
 - **Better IDE Support**: Full autocomplete and refactoring
 - **Dynamic Configuration**: Use environment variables and Swift logic
 
-See <doc:Examples> for example configurations and <doc:Migration> if you're migrating from Pkl.
 
 For complete configuration schema documentation, see ``ArcConfiguration``.
 
@@ -60,9 +59,7 @@ Arc consists of several modules:
 - <doc:Configuration>
 - <doc:Examples>
 
-### Migration
 
-- <doc:Migration>
 
 ### Deployment
 

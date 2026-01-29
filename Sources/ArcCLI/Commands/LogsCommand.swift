@@ -43,7 +43,7 @@ public struct LogsCommand: ParsableCommand {
     ///
     /// - Throws: An error if the log file cannot be read.
     public func run() throws {
-        let configPath = "ArcManifest.swift"
+        let configPath = "Arc.swift"
         let shouldFollow = follow
 
         let semaphore = DispatchSemaphore(value: 0)

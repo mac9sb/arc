@@ -14,7 +14,7 @@ public enum CloudflaredConfigError: Error, Equatable {
             return .alert(
                 "Cloudflare tunnel is enabled but no tunnel identifier is configured",
                 takeaways: [
-                    "Set a tunnel name or UUID in ArcManifest.swift:",
+                    "Set a tunnel name or UUID in Arc.swift:",
                     "cloudflare {",
                     "  enabled = true",
                     "  tunnelName = \"maclong-tunnel\"",

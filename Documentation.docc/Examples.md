@@ -9,7 +9,7 @@ This section contains example `ArcManifest.swift` files demonstrating various co
 
 ## Overview
 
-Arc has migrated from Pkl-based configuration to native Swift manifests. These examples show you how to configure Arc using Swift's type-safe, compile-time validated configuration system.
+Arc has migrated -based configuration to native Swift manifests. These examples show you how to configure Arc using Swift's type-safe, compile-time validated configuration system.
 
 ---
 
@@ -56,7 +56,7 @@ Demonstrates every available configuration option in `ArcDescription`.
 **Use this when:**
 - You need advanced features
 - You want to see all available options
-- You're migrating complex Pkl configs
+- You're migrating complex legacy configs
 
 **Key features:**
 - All configuration options shown
@@ -92,10 +92,8 @@ Each example demonstrates:
 
 ---
 
-## Migration Guide
 
-If you're migrating from Pkl configuration files, see <doc:Migration> for:
-- Side-by-side Pkl vs Swift comparisons
+- Side-by-side conversion examples
 - Common pitfalls and how to avoid them
 - Complete migration checklist
 - Testing strategies
@@ -343,7 +341,6 @@ lsof -i :8000  # Check if port 8000 is in use
 
 ## Additional Resources
 
-- **Migration Guide:** <doc:Migration>
 - **Configuration Tutorial:** <doc:Configuration>
 - **Getting Started:** <doc:GettingStarted>
 
@@ -351,7 +348,6 @@ lsof -i :8000  # Check if port 8000 is in use
 
 ## See Also
 
-- <doc:Migration> - Migrating from Pkl to Swift manifests
 - <doc:Configuration> - Configuration tutorial
 - <doc:GettingStarted> - Getting started with Arc
 

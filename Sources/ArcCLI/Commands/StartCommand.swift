@@ -113,7 +113,7 @@ public struct StartCommand: ParsableCommand {
     /// - Throws: An error if configuration loading, server startup, or process
     ///   management fails.
     public func run() throws {
-        let configPath = "ArcManifest.swift"
+        let configPath = "Arc.swift"
         let runBackground = background
         let logFilePath = logFile
         let isVerbose = verbose

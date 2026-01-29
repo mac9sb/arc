@@ -555,6 +555,5 @@ arc --version
 ## See Also
 
 - <doc:Examples> - Example configurations
-- <doc:Migration> - Migrating from Pkl
 - <doc:GettingStarted> - Getting started guide
 - ``ArcConfiguration`` - Configuration reference

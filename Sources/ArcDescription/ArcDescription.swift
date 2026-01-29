@@ -5,7 +5,7 @@ import Foundation
 /// Top-level Swift manifest configuration for Arc.
 ///
 /// This is the main configuration object that defines your entire Arc setup.
-/// Create an instance of this in your `ArcManifest.swift` file.
+/// Create an instance of this in your `Arc.swift` file.
 ///
 /// ## Example
 ///
@@ -78,7 +78,7 @@ public struct ArcConfiguration: Codable, Sendable, Hashable {
     ///
     /// All relative paths in service and static site configurations are resolved
     /// relative to this directory. If `nil`, defaults to the directory containing
-    /// `ArcManifest.swift`.
+    /// `Arc.swift`.
     ///
     /// - Note: Auto-detected from manifest location if not specified
     public var baseDir: String?
@@ -119,23 +119,14 @@ public struct ArcConfiguration: Codable, Sendable, Hashable {
     /// - ``StaticSite``
     public var sites: Sites
 
-    /// Cloudflare Tunnel configuration.
+    /// Optional extensions/modules.
     ///
-    /// Optional Cloudflare Tunnel integration for exposing local services.
-    ///
-    /// ## See Also
-    ///
-    /// - ``CloudflareConfig``
-    public var cloudflare: CloudflareConfig?
-
-    /// SSH configuration.
-    ///
-    /// Optional SSH access configuration via Cloudflare tunnel.
+    /// Groups optional integrations like Cloudflare tunnels and SSH.
     ///
     /// ## See Also
     ///
-    /// - ``SshConfig``
-    public var ssh: SshConfig?
+    /// - ``Extensions``
+    public var extensions: Extensions?
 
     /// Global watch configuration.
     ///
@@ -146,6 +137,34 @@ public struct ArcConfiguration: Codable, Sendable, Hashable {
     /// - ``WatchConfig``
     public var watch: WatchConfig
 
+    /// Cloudflare Tunnel configuration.
+    ///
+    /// **Deprecated**: Use `extensions.cloudflare` instead.
+    @available(*, deprecated, renamed: "extensions.cloudflare")
+    public var cloudflare: CloudflareConfig? {
+        get { extensions?.cloudflare }
+        set {
+            if extensions == nil {
+                extensions = Extensions()
+            }
+            extensions?.cloudflare = newValue
+        }
+    }
+
+    /// SSH configuration.
+    ///
+    /// **Deprecated**: Use `extensions.ssh` instead.
+    @available(*, deprecated, renamed: "extensions.ssh")
+    public var ssh: SshConfig? {
+        get { extensions?.ssh }
+        set {
+            if extensions == nil {
+                extensions = Extensions()
+            }
+            extensions?.ssh = newValue
+        }
+    }
+
     public init(
         proxyPort: Int = 8080,
         logDir: String = "~/Library/Logs/arc",
@@ -155,9 +174,10 @@ public struct ArcConfiguration: Codable, Sendable, Hashable {
         region: String? = nil,
         processName: String? = nil,
         sites: Sites = Sites(),
+        watch: WatchConfig = WatchConfig(),
+        extensions: Extensions? = nil,
         cloudflare: CloudflareConfig? = nil,
-        ssh: SshConfig? = nil,
-        watch: WatchConfig = WatchConfig()
+        ssh: SshConfig? = nil
     ) {
         // Validate proxy port
         precondition(proxyPort > 0 && proxyPort < 65536, "Proxy port must be in range 1-65535, got \(proxyPort)")
@@ -192,18 +212,66 @@ public struct ArcConfiguration: Codable, Sendable, Hashable {
         self.region = region
         self.processName = processName
         self.sites = sites
-        self.cloudflare = cloudflare
-        self.ssh = ssh
         self.watch = watch
+
+        // Handle both new and deprecated APIs
+        if let extensions = extensions {
+            self.extensions = extensions
+        } else if cloudflare != nil || ssh != nil {
+            self.extensions = Extensions(cloudflare: cloudflare, ssh: ssh)
+        } else {
+            self.extensions = nil
+        }
     }
 }
 
 // MARK: - Array Extension for Validation
 
-private extension Array where Element: Hashable {
+extension Array where Element: Hashable {
     func uniqued() -> [Element] {
         var seen = Set<Element>()
         return filter { seen.insert($0).inserted }
+    }
+}
+
+// MARK: - Extensions
+
+/// Optional extensions and integrations.
+///
+/// Groups optional modules like Cloudflare tunnels and SSH configuration.
+public struct Extensions: Codable, Sendable, Hashable {
+    /// Cloudflare Tunnel configuration.
+    ///
+    /// Optional Cloudflare Tunnel integration for exposing local services.
+    ///
+    /// ## See Also
+    ///
+    /// - ``CloudflareConfig``
+    public var cloudflare: CloudflareConfig?
+
+    /// SSH configuration.
+    ///
+    /// Optional SSH access configuration via Cloudflare tunnel.
+    ///
+    /// ## See Also
+    ///
+    /// - ``SshConfig``
+    public var ssh: SshConfig?
+
+    public init(
+        cloudflare: CloudflareConfig? = nil,
+        ssh: SshConfig? = nil
+    ) {
+        self.cloudflare = cloudflare
+        self.ssh = ssh
+    }
+
+    /// Creates an Extensions configuration with cleaner static factory method.
+    public static func extensions(
+        cloudflare: CloudflareConfig? = nil,
+        ssh: SshConfig? = nil
+    ) -> Extensions {
+        Extensions(cloudflare: cloudflare, ssh: ssh)
     }
 }
 
@@ -263,6 +331,14 @@ public struct Sites: Codable, Sendable, Hashable {
     ) {
         self.services = services
         self.pages = pages
+    }
+
+    /// Creates a Sites configuration with services and pages.
+    public static func sites(
+        services: [ServiceSite] = [],
+        pages: [StaticSite] = []
+    ) -> Sites {
+        Sites(services: services, pages: pages)
     }
 
     /// Validates the sites configuration.
@@ -373,6 +449,25 @@ public struct ServiceSite: Codable, Sendable, Hashable, Identifiable {
     /// Unique identifier conforming to `Identifiable`.
     public var id: String { name }
 
+    /// Creates a ServiceSite with a cleaner static factory method.
+    public static func service(
+        name: String,
+        domain: String,
+        port: Int,
+        healthPath: String = "/health",
+        process: ProcessConfig,
+        watchTargets: [String]? = nil
+    ) -> ServiceSite {
+        ServiceSite(
+            name: name,
+            domain: domain,
+            port: port,
+            healthPath: healthPath,
+            process: process,
+            watchTargets: watchTargets
+        )
+    }
+
     public init(
         name: String,
         domain: String,
@@ -466,6 +561,21 @@ public struct StaticSite: Codable, Sendable, Hashable, Identifiable {
 
     /// Unique identifier conforming to `Identifiable`.
     public var id: String { name }
+
+    /// Creates a StaticSite with a cleaner static factory method.
+    public static func page(
+        name: String,
+        domain: String,
+        outputPath: String,
+        watchTargets: [String]? = nil
+    ) -> StaticSite {
+        StaticSite(
+            name: name,
+            domain: domain,
+            outputPath: outputPath,
+            watchTargets: watchTargets
+        )
+    }
 
     public init(
         name: String,
@@ -569,6 +679,23 @@ public struct ProcessConfig: Codable, Sendable, Hashable {
     /// the parent process's environment.
     public var env: [String: String]?
 
+    /// Creates a ProcessConfig with a cleaner static factory method.
+    public static func process(
+        workingDir: String,
+        executable: String? = nil,
+        command: String? = nil,
+        args: [String]? = nil,
+        env: [String: String]? = nil
+    ) -> ProcessConfig {
+        ProcessConfig(
+            workingDir: workingDir,
+            executable: executable,
+            command: command,
+            args: args,
+            env: env
+        )
+    }
+
     public init(
         workingDir: String,
         executable: String? = nil,
@@ -641,7 +768,7 @@ public struct WatchConfig: Codable, Sendable, Hashable {
 
     /// Whether to watch the manifest for changes.
     ///
-    /// When `true`, Arc watches `ArcManifest.swift` and reloads configuration
+    /// When `true`, Arc watches `Arc.swift` and reloads configuration
     /// when it changes.
     ///
     /// - Note: Default is `true`
@@ -672,6 +799,23 @@ public struct WatchConfig: Codable, Sendable, Hashable {
     /// - Note: Default is `1000` milliseconds (1 second)
     /// - Precondition: Must be non-negative
     public var cooldownMs: Int
+
+    /// Creates a WatchConfig with a cleaner static factory method.
+    public static func watch(
+        enabled: Bool = true,
+        watchConfig: Bool = true,
+        followSymlinks: Bool = false,
+        debounceMs: Int = 300,
+        cooldownMs: Int = 1000
+    ) -> WatchConfig {
+        WatchConfig(
+            enabled: enabled,
+            watchConfig: watchConfig,
+            followSymlinks: followSymlinks,
+            debounceMs: debounceMs,
+            cooldownMs: cooldownMs
+        )
+    }
 
     public init(
         enabled: Bool = true,
@@ -750,6 +894,21 @@ public struct CloudflareConfig: Codable, Sendable, Hashable {
     /// UUID identifier for the tunnel from your Cloudflare dashboard.
     public var tunnelUUID: String?
 
+    /// Creates a CloudflareConfig with a cleaner static factory method.
+    public static func cloudflare(
+        enabled: Bool = false,
+        cloudflaredPath: String = "/opt/homebrew/bin/cloudflared",
+        tunnelName: String? = nil,
+        tunnelUUID: String? = nil
+    ) -> CloudflareConfig {
+        CloudflareConfig(
+            enabled: enabled,
+            cloudflaredPath: cloudflaredPath,
+            tunnelName: tunnelName,
+            tunnelUUID: tunnelUUID
+        )
+    }
+
     public init(
         enabled: Bool = false,
         cloudflaredPath: String = "/opt/homebrew/bin/cloudflared",
@@ -824,6 +983,19 @@ public struct SshConfig: Codable, Sendable, Hashable {
     /// - Note: Default is `22`
     /// - Precondition: Must be in range 1-65535
     public var port: Int
+
+    /// Creates an SshConfig with a cleaner static factory method.
+    public static func ssh(
+        enabled: Bool = false,
+        domain: String? = nil,
+        port: Int = 22
+    ) -> SshConfig {
+        SshConfig(
+            enabled: enabled,
+            domain: domain,
+            port: port
+        )
+    }
 
     public init(
         enabled: Bool = false,

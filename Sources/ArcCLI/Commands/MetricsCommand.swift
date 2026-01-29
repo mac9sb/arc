@@ -44,7 +44,7 @@ public struct MetricsCommand: ParsableCommand {
     var verbose: Bool = false
 
     public func run() throws {
-        let configPath = "ArcManifest.swift"
+        let configPath = "Arc.swift"
         let showHealth = health
         let outputJSON = json
         let isVerbose = verbose

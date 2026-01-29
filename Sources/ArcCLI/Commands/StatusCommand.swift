@@ -62,7 +62,7 @@ public struct StatusCommand: ParsableCommand {
     ///
     /// - Throws: An error if configuration loading or process inspection fails.
     public func run() throws {
-        let configPath = "ArcManifest.swift"
+        let configPath = "Arc.swift"
         let processName = name
         let isVerbose = verbose
 

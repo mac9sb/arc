@@ -39,7 +39,7 @@ public struct DoctorCommand: ParsableCommand {
     var verbose: Bool = false
 
     public func run() throws {
-        let configPath = "ArcManifest.swift"
+        let configPath = "Arc.swift"
         let isVerbose = verbose
 
         let semaphore = DispatchSemaphore(value: 0)
@@ -213,7 +213,7 @@ public struct DoctorCommand: ParsableCommand {
             return CheckResult(
                 name: "Config",
                 status: .error("Config file not found: \(resolvedPath)"),
-                details: verbose ? "Create ArcManifest.swift in the project root" : nil
+                details: verbose ? "Create Arc.swift in the project root" : nil
             )
         }
 
@@ -243,7 +243,7 @@ public struct DoctorCommand: ParsableCommand {
             return CheckResult(
                 name: "Config",
                 status: .error("Config validation failed: \(error.localizedDescription)"),
-                details: verbose ? "Ensure ArcManifest.swift compiles and exports a valid config" : nil
+                details: verbose ? "Ensure Arc.swift compiles and exports a valid config" : nil
             )
         }
     }

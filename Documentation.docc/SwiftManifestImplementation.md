@@ -9,7 +9,7 @@ This document tracks the implementation status of the Swift manifest system for 
 
 ## Overview
 
-The Swift manifest system replaces the previous Pkl-based configuration with a native Swift approach, providing type safety, better IDE support, and zero external dependencies.
+The Swift manifest system replaces the previous previous configuration with a native Swift approach, providing type safety, better IDE support, and zero external dependencies.
 
 ## Implementation Status
 
@@ -84,7 +84,7 @@ Runtime configuration wrapper around `ArcConfiguration`:
 Preserves existing CLI call sites:
 
 **Features:**
-- `ModuleSource` shim for Pkl-like API
+- `ModuleSource` shim for legacy API
 - Multiple `loadFrom()` overload signatures
 - Both sync and async variants
 - Optional `configPath` parameter (ignored)
@@ -225,7 +225,7 @@ Expand inline documentation:
 
 ### Achieved ✅
 
-1. **Zero Pkl Dependencies** - No `pkl-swift` or Pkl CLI required
+1. **Zero external dependencies** - No `pkl-swift` or external CLI tools required
 2. **Compile-Time Type Safety** - Swift's type system catches errors
 3. **Full CLI Compatibility** - All commands work with new system
 4. **Hot-Reload Working** - Config changes trigger automatic reload
@@ -245,7 +245,6 @@ Expand inline documentation:
 
 ---
 
-## Migration Path
 
 ### For Users
 
@@ -253,9 +252,8 @@ Expand inline documentation:
 2. ✅ Import `ArcDescription`
 3. ✅ Define `config` variable with `ArcConfiguration`
 4. ✅ Run `arc run` (automatically detects new manifest)
-5. ✅ Remove old `config.pkl`
+5. ✅ Remove old `legacy config files`
 
-See <doc:Migration> for detailed migration guide.
 
 ### For Arc Development
 
@@ -382,7 +380,6 @@ Development and production have different layouts:
 
 ### Phase 2: Refinement ⏳ In Progress
 - Example manifests ✅
-- Migration guide ✅
 - Validation logic ⚠️
 - Error messages ⚠️
 
@@ -409,6 +406,5 @@ To work on the Swift manifest system:
 ## See Also
 
 - <doc:Examples> - Example manifest configurations
-- <doc:Migration> - Migrating from Pkl to Swift
 - <doc:ArcManifest-PRD> - Original product requirements
 - ``ArcConfiguration`` - Configuration type reference

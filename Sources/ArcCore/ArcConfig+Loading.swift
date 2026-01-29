@@ -1,7 +1,7 @@
 import Foundation
 
-/// Lightweight stand-in for the previous Pkl module source.
-/// This preserves call-site compatibility while routing to Swift manifests.
+/// Lightweight module source wrapper for loading Swift manifests.
+/// This preserves call-site compatibility.
 public struct ModuleSource: Sendable, Hashable {
     public let path: String
 
@@ -21,22 +21,22 @@ extension ArcConfig {
         try ArcManifestLoader.load(from: path)
     }
 
-    /// Backwards-compatible signature that ignores `configPath`.
+    /// Legacy signature that ignores `configPath`.
     public static func loadFrom(path: String, configPath: URL?) throws -> ArcConfig {
         try ArcManifestLoader.load(from: path)
     }
 
-    /// Backwards-compatible async signature that ignores `configPath`.
+    /// Legacy async signature that ignores `configPath`.
     public static func loadFrom(path: String, configPath: URL?) async throws -> ArcConfig {
         try ArcManifestLoader.load(from: path)
     }
 
-    /// Backwards-compatible signature that replaces Pkl module source loading.
+    /// Legacy signature for module source loading with optional config path.
     public static func loadFrom(source: ModuleSource) async throws -> ArcConfig {
         try ArcManifestLoader.load(from: source.path)
     }
 
-    /// Backwards-compatible signature that replaces Pkl module source loading.
+    /// Legacy signature for module source loading.
     public static func loadFrom(source: ModuleSource, configPath: URL? = nil) async throws -> ArcConfig {
         try ArcManifestLoader.load(from: source.path)
     }
