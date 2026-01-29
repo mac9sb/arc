@@ -8,7 +8,7 @@ let package = Package(
     ],
     products: [
         .executable(name: "arc", targets: ["Arc"]),
-        .library(name: "ArcDescription", targets: ["ArcDescription"]),
+        .library(name: "ArcDescription", type: .static, targets: ["ArcDescription"]),
         .library(name: "ArcCore", targets: ["ArcCore"]),
         .library(name: "ArcServer", targets: ["ArcServer"]),
     ],

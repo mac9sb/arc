@@ -74,34 +74,43 @@ private func runSwift(
     moduleSearchPaths: [String],
     librarySearchPaths: [String]
 ) throws -> Data {
-    let task = Process()
-    task.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+    // Compile manifest to temporary executable
+    let tempDir = FileManager.default.temporaryDirectory
+    let executableURL = tempDir.appendingPathComponent("arc-manifest-runner-\(UUID().uuidString)")
 
-    var arguments: [String] = ["swift"]
+    let compileTask = Process()
+    compileTask.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+
+    var compileArgs: [String] = ["swiftc"]
 
     for path in moduleSearchPaths {
-        arguments.append(contentsOf: ["-I", path])
+        compileArgs.append(contentsOf: ["-I", path])
     }
 
     for path in librarySearchPaths {
-        arguments.append(contentsOf: ["-L", path])
+        compileArgs.append(contentsOf: ["-L", path])
     }
 
-    arguments.append(contentsOf: ["-lArcDescription", manifestPath, runnerPath])
-    task.arguments = arguments
+    compileArgs.append(contentsOf: [
+        "-lArcDescription",
+        manifestPath,
+        runnerPath,
+        "-o", executableURL.path
+    ])
+    compileTask.arguments = compileArgs
 
-    let outputPipe = Pipe()
     let errorPipe = Pipe()
-    task.standardOutput = outputPipe
-    task.standardError = errorPipe
+    compileTask.standardError = errorPipe
 
-    try task.run()
-    task.waitUntilExit()
+    try compileTask.run()
+    compileTask.waitUntilExit()
 
-    let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-    if task.terminationStatus != 0 {
+    if compileTask.terminationStatus != 0 {
         let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
         let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+
+        // Clean up
+        try? FileManager.default.removeItem(at: executableURL)
 
         // Provide helpful error message based on common issues
         var helpfulMessage = "Swift manifest compilation failed.\n\n"
@@ -142,6 +151,29 @@ private func runSwift(
         }
 
         throw ArcError.configLoadFailed(helpfulMessage)
+    }
+
+    // Execute the compiled binary
+    let runTask = Process()
+    runTask.executableURL = executableURL
+
+    let outputPipe = Pipe()
+    let runErrorPipe = Pipe()
+    runTask.standardOutput = outputPipe
+    runTask.standardError = runErrorPipe
+
+    try runTask.run()
+    runTask.waitUntilExit()
+
+    let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+
+    // Clean up executable
+    try? FileManager.default.removeItem(at: executableURL)
+
+    if runTask.terminationStatus != 0 {
+        let errorData = runErrorPipe.fileHandleForReading.readDataToEndOfFile()
+        let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+        throw ArcError.configLoadFailed("Manifest execution failed: \(errorMessage)")
     }
 
     return outputData
@@ -230,20 +262,41 @@ private func findArcDescriptionSearchPaths() -> (modulePaths: [String], libraryP
 
     runtimeCandidates.forEach(addCandidate)
 
-    // Development candidates (SwiftPM build output).
-    let currentFileURL = URL(fileURLWithPath: #filePath)
-    let packageRoot = currentFileURL
-        .deletingLastPathComponent()   // ArcCore
-        .deletingLastPathComponent()   // Sources
-        .deletingLastPathComponent()   // arc
-    let buildDir = packageRoot.appendingPathComponent(".build")
+    // Development candidates - search common locations
+    let currentDir = fileManager.currentDirectoryPath
+    let currentDirURL = URL(fileURLWithPath: currentDir)
 
-    if let enumerator = fileManager.enumerator(at: buildDir, includingPropertiesForKeys: nil) {
-        for case let url as URL in enumerator {
-            if url.lastPathComponent == "debug" || url.lastPathComponent == "release" {
-                addCandidate(url.path)
+    // Check current directory and parent directories for tooling/arc
+    var searchURL = currentDirURL
+    for _ in 0..<5 {  // Search up to 5 levels up
+        // Check explicit known build locations first
+        let toolingArcBuild = searchURL.appendingPathComponent("tooling/arc/.build")
+
+        // Add known build directory structures directly
+        let knownPaths = [
+            toolingArcBuild.appendingPathComponent("release").path,
+            toolingArcBuild.appendingPathComponent("arm64-apple-macosx/release").path,
+            toolingArcBuild.appendingPathComponent("debug").path,
+            toolingArcBuild.appendingPathComponent("arm64-apple-macosx/debug").path,
+        ]
+
+        for path in knownPaths {
+            if fileManager.fileExists(atPath: path) {
+                addCandidate(path)
             }
         }
+
+        // Also enumerate to catch other architectures
+        if fileManager.fileExists(atPath: toolingArcBuild.path) {
+            if let enumerator = fileManager.enumerator(at: toolingArcBuild, includingPropertiesForKeys: nil) {
+                for case let url as URL in enumerator {
+                    if url.lastPathComponent == "debug" || url.lastPathComponent == "release" {
+                        addCandidate(url.path)
+                    }
+                }
+            }
+        }
+        searchURL = searchURL.deletingLastPathComponent()
     }
 
     return (modulePaths, libraryPaths)
@@ -254,6 +307,7 @@ private func containsArcDescriptionModule(at path: String) -> Bool {
         "ArcDescription.swiftmodule",
         "ArcDescription.swiftmodule/arm64-apple-macosx.swiftmodule",
         "ArcDescription.swiftmodule/x86_64-apple-macosx.swiftmodule",
+        "Modules/ArcDescription.swiftmodule",
     ]
 
     for candidate in moduleCandidates {
