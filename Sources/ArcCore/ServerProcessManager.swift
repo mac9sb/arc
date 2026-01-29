@@ -122,7 +122,7 @@ public class ServerProcessManager {
         } catch {
             throw ArcError.invalidConfiguration(
                 "Failed to create log directory at \(logDir): \(error.localizedDescription). "
-                    + "Ensure the directory exists and is writable, or change logDir in config.pkl to a user-writable location.")
+                    + "Ensure the directory exists and is writable, or change logDir in ArcManifest.swift to a user-writable location.")
         }
 
         let logFileURL = URL(fileURLWithPath: logPath)

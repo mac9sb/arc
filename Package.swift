@@ -8,12 +8,13 @@ let package = Package(
     ],
     products: [
         .executable(name: "arc", targets: ["Arc"]),
+        .library(name: "ArcDescription", targets: ["ArcDescription"]),
         .library(name: "ArcCore", targets: ["ArcCore"]),
         .library(name: "ArcServer", targets: ["ArcServer"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0"),
-        .package(url: "https://github.com/apple/pkl-swift.git", from: "0.3.0"),
+
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.0"),
         .package(url: "https://github.com/tuist/Noora.git", .upToNextMajor(from: "0.15.0")),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.3"),
@@ -40,6 +41,10 @@ let package = Package(
             ]
         ),
         .target(
+            name: "ArcDescription",
+            dependencies: []
+        ),
+        .target(
             name: "ArcServer",
             dependencies: [
                 "ArcCore",
@@ -52,7 +57,7 @@ let package = Package(
         .target(
             name: "ArcCore",
             dependencies: [
-                .product(name: "PklSwift", package: "pkl-swift"),
+                "ArcDescription",
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "Noora", package: "Noora"),
             ]

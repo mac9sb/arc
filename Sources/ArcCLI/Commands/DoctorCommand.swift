@@ -2,7 +2,7 @@ import ArcCore
 import ArgumentParser
 import Foundation
 import Noora
-import PklSwift
+
 
 /// Thread-safe box for passing errors from async Tasks
 private final class ErrorBox: @unchecked Sendable {
@@ -13,7 +13,7 @@ private final class ErrorBox: @unchecked Sendable {
 ///
 /// Performs a series of health checks including:
 /// - Swift toolchain availability and version
-/// - Required dependencies (pkl, cloudflared)
+/// - Required dependencies (cloudflared)
 /// - Configuration file validity
 /// - Port availability
 /// - File permissions
@@ -32,16 +32,14 @@ public struct DoctorCommand: ParsableCommand {
         abstract: "Diagnose common issues with Arc setup"
     )
 
-    /// Path to the Pkl configuration file.
-    @Option(name: .shortAndLong, help: "Path to config file")
-    var config: String = "config.pkl"
+
 
     /// Enable verbose output with additional details.
     @Flag(name: .shortAndLong, help: "Enable verbose output")
     var verbose: Bool = false
 
     public func run() throws {
-        let configPath = config
+        let configPath = "ArcManifest.swift"
         let isVerbose = verbose
 
         let semaphore = DispatchSemaphore(value: 0)
@@ -82,15 +80,7 @@ public struct DoctorCommand: ParsableCommand {
             warnings.append(Issue(category: "Swift", message: msg))
         }
 
-        // Check Pkl
-        print("Checking Pkl CLI...")
-        let pklCheck = await checkPkl(verbose: verbose)
-        printCheckResult(pklCheck)
-        if case .error(let msg) = pklCheck.status {
-            issues.append(Issue(category: "Pkl", message: msg))
-        } else if case .warning(let msg) = pklCheck.status {
-            warnings.append(Issue(category: "Pkl", message: msg))
-        }
+
 
         // Check config file
         print("Checking configuration...")
@@ -206,43 +196,7 @@ public struct DoctorCommand: ParsableCommand {
         }
     }
 
-    private static func checkPkl(verbose: Bool) async -> CheckResult {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        task.arguments = ["pkl", "--version"]
 
-        let pipe = Pipe()
-        task.standardOutput = pipe
-        task.standardError = Pipe()
-
-        do {
-            try task.run()
-            task.waitUntilExit()
-
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            let output = String(data: data, encoding: .utf8) ?? ""
-
-            guard task.terminationStatus == 0 else {
-                return CheckResult(
-                    name: "Pkl",
-                    status: .warning("Pkl not found. Install from https://pkl-lang.org for config validation."),
-                    details: nil
-                )
-            }
-            let version = output.trimmingCharacters(in: .whitespacesAndNewlines)
-            return CheckResult(
-                name: "Pkl",
-                status: .ok,
-                details: verbose ? version : nil
-            )
-        } catch {
-            return CheckResult(
-                name: "Pkl",
-                status: .warning("Pkl not found. Install from https://pkl-lang.org for config validation."),
-                details: nil
-            )
-        }
-    }
 
     private static func checkConfig(configPath: String, verbose: Bool) async -> CheckResult {
         let expandedPath = (configPath as NSString).expandingTildeInPath
@@ -259,7 +213,7 @@ public struct DoctorCommand: ParsableCommand {
             return CheckResult(
                 name: "Config",
                 status: .error("Config file not found: \(resolvedPath)"),
-                details: verbose ? "Create config.pkl or specify path with --config" : nil
+                details: verbose ? "Create ArcManifest.swift in the project root" : nil
             )
         }
 
@@ -289,7 +243,7 @@ public struct DoctorCommand: ParsableCommand {
             return CheckResult(
                 name: "Config",
                 status: .error("Config validation failed: \(error.localizedDescription)"),
-                details: verbose ? "Run 'pkl eval \(configPath)' for details" : nil
+                details: verbose ? "Ensure ArcManifest.swift compiles and exports a valid config" : nil
             )
         }
     }
@@ -493,7 +447,7 @@ public struct DoctorCommand: ParsableCommand {
             resolvedPath = (currentDir as NSString).appendingPathComponent(expandedPath)
         }
 
-        var logDir = "/var/log/arc"  // Default
+        var logDir = "~/Library/Logs/arc"  // Default
 
         // Try to get log dir from config
         if FileManager.default.fileExists(atPath: resolvedPath) {

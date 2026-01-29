@@ -87,7 +87,7 @@ public struct InitializeCommand: ParsableCommand {
         // Generate files from templates
         try generateExampleAPI(in: exampleApiDir, resourcesPath: resourcesPath)
         try generateExampleSite(in: exampleSiteDir, resourcesPath: resourcesPath)
-        try generateConfigPkl(in: baseDir, resourcesPath: resourcesPath)
+        try generateArcManifest(in: baseDir, resourcesPath: resourcesPath)
         try generateREADME(in: baseDir, projectName: projectName, resourcesPath: resourcesPath)
     }
 
@@ -143,10 +143,10 @@ public struct InitializeCommand: ParsableCommand {
 
     // MARK: - Config Generation
 
-    private func generateConfigPkl(in baseDir: String, resourcesPath: String) throws {
-        let templatePath = (resourcesPath as NSString).appendingPathComponent("config.pkl.template")
+    private func generateArcManifest(in baseDir: String, resourcesPath: String) throws {
+        let templatePath = (resourcesPath as NSString).appendingPathComponent("ArcManifest.swift.template")
         let templateContent = try String(contentsOfFile: templatePath, encoding: .utf8)
-        let destPath = (baseDir as NSString).appendingPathComponent("config.pkl")
+        let destPath = (baseDir as NSString).appendingPathComponent("ArcManifest.swift")
         try templateContent.write(toFile: destPath, atomically: true, encoding: .utf8)
     }
 

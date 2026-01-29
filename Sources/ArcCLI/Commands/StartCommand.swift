@@ -4,7 +4,6 @@ import ArgumentParser
 import Darwin
 import Foundation
 import Noora
-import PklSwift
 
 /// Thread-safe box for passing errors from async Tasks
 private final class ErrorBox: @unchecked Sendable {
@@ -62,10 +61,9 @@ private nonisolated func redirectStdioToLog(logPath: String) {
 /// ## Usage
 ///
 /// ```sh
-/// arc start                    # Start in foreground with default config
-/// arc start --config custom.pkl # Use custom config file
-/// arc start --background        # Start in background mode
-/// arc start --keep-awake        # Prevent system sleep while running
+/// arc start               # Start in foreground with default config
+/// arc start --background  # Start in background mode
+/// arc start --keep-awake  # Prevent system sleep while running
 /// ```
 public struct StartCommand: ParsableCommand {
     public init() {}
@@ -75,11 +73,7 @@ public struct StartCommand: ParsableCommand {
         abstract: "Start arc server"
     )
 
-    /// Path to the Pkl configuration file.
-    ///
-    /// Defaults to `config.pkl` in the current directory.
-    @Option(name: .shortAndLong, help: "Path to config file")
-    var config: String = "config.pkl"
+
 
     /// Whether to run the server in background mode.
     ///
@@ -119,7 +113,7 @@ public struct StartCommand: ParsableCommand {
     /// - Throws: An error if configuration loading, server startup, or process
     ///   management fails.
     public func run() throws {
-        let configPath = config
+        let configPath = "ArcManifest.swift"
         let runBackground = background
         let logFilePath = logFile
         let isVerbose = verbose
@@ -360,7 +354,6 @@ public struct StartCommand: ParsableCommand {
         var args =
             argsPrefix + [
                 "start",
-                "--config", configPath,
                 "--internal-server",
                 "--process-name", processName,
             ]
@@ -755,7 +748,7 @@ public struct StartCommand: ParsableCommand {
 
         var watchTargets: [FileWatcher.WatchTarget] = []
 
-        if watchConfig.watchConfigPkl {
+        if watchConfig.watchConfig {
             let url = URL(fileURLWithPath: configPath)
             let configPathCopy = configPath
             watchTargets.append(

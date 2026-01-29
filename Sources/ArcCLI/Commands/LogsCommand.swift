@@ -2,7 +2,6 @@ import ArcCore
 import ArgumentParser
 import Foundation
 import Noora
-import PklSwift
 
 /// Thread-safe box for passing errors from async Tasks
 private final class ErrorBox: @unchecked Sendable {
@@ -28,11 +27,7 @@ public struct LogsCommand: ParsableCommand {
         abstract: "Show arc server logs"
     )
 
-    /// Path to the Pkl configuration file.
-    ///
-    /// Defaults to `config.pkl` in the current directory.
-    @Option(name: .shortAndLong, help: "Path to config file")
-    var config: String = "config.pkl"
+
 
     /// Whether to follow log output in real-time.
     ///
@@ -48,7 +43,7 @@ public struct LogsCommand: ParsableCommand {
     ///
     /// - Throws: An error if the log file cannot be read.
     public func run() throws {
-        let configPath = config
+        let configPath = "ArcManifest.swift"
         let shouldFollow = follow
 
         let semaphore = DispatchSemaphore(value: 0)

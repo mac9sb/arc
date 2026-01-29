@@ -3,7 +3,6 @@ import ArcServer
 import ArgumentParser
 import Foundation
 import Noora
-import PklSwift
 
 /// Thread-safe box for passing errors from async Tasks
 private final class ErrorBox: @unchecked Sendable {
@@ -30,9 +29,7 @@ public struct MetricsCommand: ParsableCommand {
         abstract: "Display metrics and health status"
     )
 
-    /// Path to the Pkl configuration file.
-    @Option(name: .shortAndLong, help: "Path to config file")
-    var config: String = "config.pkl"
+
 
     /// Show health check status.
     @Flag(name: .long, help: "Show health check status for all sites")
@@ -47,7 +44,7 @@ public struct MetricsCommand: ParsableCommand {
     var verbose: Bool = false
 
     public func run() throws {
-        let configPath = config
+        let configPath = "ArcManifest.swift"
         let showHealth = health
         let outputJSON = json
         let isVerbose = verbose
@@ -97,7 +94,7 @@ public struct MetricsCommand: ParsableCommand {
 
         // Check if config exists
         guard FileManager.default.fileExists(atPath: resolvedPath) else {
-            noora.error("Config file not found: \(resolvedPath)")
+            noora.error("Manifest file not found: \(resolvedPath)")
             return
         }
 

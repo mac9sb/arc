@@ -30,12 +30,11 @@ arc init --directory ~/projects/my-project
 Start the Arc server.
 
 ```sh
-arc start [--config <path>] [--background] [--log-file <path>]
+arc start [--background] [--log-file <path>]
 ```
 
 ### Options
 
-- `--config`, `-c`: Path to the configuration file. Defaults to `config.pkl`.
 - `--background`: Run the server in background mode.
 - `--log-file`: Path to log file (for background mode).
 
@@ -43,7 +42,7 @@ arc start [--config <path>] [--background] [--log-file <path>]
 
 ```sh
 arc start
-arc start --config custom.pkl --background
+arc start --background
 ```
 
 ## stop

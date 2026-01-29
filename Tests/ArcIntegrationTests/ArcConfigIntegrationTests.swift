@@ -214,7 +214,7 @@ struct ArcConfigIntegrationTests {
     func testWatchConfigDefaults() {
         let watchConfig = WatchConfig()
 
-        #expect(watchConfig.watchConfigPkl == true)
+        #expect(watchConfig.watchConfig == true)
         #expect(watchConfig.followSymlinks == false)
         #expect(watchConfig.debounceMs == 300)
         #expect(watchConfig.cooldownMs == 1000)
@@ -223,13 +223,13 @@ struct ArcConfigIntegrationTests {
     @Test("WatchConfig can be customized")
     func testWatchConfigCustom() {
         let watchConfig = WatchConfig(
-            watchConfigPkl: false,
+            watchConfig: false,
             followSymlinks: true,
             debounceMs: 500,
             cooldownMs: 2000
         )
 
-        #expect(watchConfig.watchConfigPkl == false)
+        #expect(watchConfig.watchConfig == false)
         #expect(watchConfig.followSymlinks == true)
         #expect(watchConfig.debounceMs == 500)
         #expect(watchConfig.cooldownMs == 2000)

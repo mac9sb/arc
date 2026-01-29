@@ -2,6 +2,10 @@
 
 Arc is a server management tool that provides a unified proxy for managing multiple static sites and dynamic applications.
 
+## TODO
+
+- [ ] Ensure that `sites.services` will actually run the binary with the various arguments.
+
 ## Overview
 
 Arc simplifies local development by providing:
@@ -45,33 +49,36 @@ This creates the necessary directory structure and example files.
 
 ### Configure Your Sites
 
-Edit `config.pkl` to add your static sites and applications. Arc uses Pkl (Programmable Configuration Language) for configuration.
-
-See the [Pkl Configuration Documentation](https://mac9sb.github.io/arc/) for the complete configuration schema.
+Edit `ArcManifest.swift` to add your static sites and applications. Arc uses a Swift manifest for configuration.
 
 Example configuration:
 
-```pkl
-amends "modulepath:/ArcConfiguration.pkl"
+```swift
+import ArcDescription
 
-sites {
-    new {
-        kind = "static"
-        name = "portfolio"
-        domain = "portfolio.localhost"
-        outputPath = "static/portfolio/.output"
-    }
-    new {
-        kind = "app"
-        name = "api"
-        domain = "api.localhost"
-        port = 8000
-        process {
-            workingDir = "apps/api"
-            executable = ".build/release/API"
-        }
-    }
-}
+let config = ArcConfiguration(
+    processName: "my-arc",
+    sites: .init(
+        services: [
+            .init(
+                name: "api",
+                domain: "api.localhost",
+                port: 8000,
+                process: .init(
+                    workingDir: "apps/api",
+                    executable: ".build/release/API"
+                )
+            )
+        ],
+        pages: [
+            .init(
+                name: "portfolio",
+                domain: "portfolio.localhost",
+                outputPath: "static/portfolio/.output"
+            )
+        ]
+    )
+)
 ```
 
 ### Start the Server
@@ -108,7 +115,7 @@ Arc consists of several modules:
 
 ## Configuration
 
-Arc uses Pkl for configuration. The schema is loaded from `modulepath:/ArcConfiguration.pkl`, installed under `/opt/homebrew/share/arc` or `/usr/local/share/arc`. See the [Pkl Documentation](https://mac9sb.github.io/arc/) for detailed information about all configuration options.
+Arc uses a Swift manifest named `ArcManifest.swift`. The manifest constructs an `ArcConfiguration` and is evaluated at runtime.
 
 ## Development
 

@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   build:
@@ -135,27 +135,6 @@ jobs:
           $(xcrun --find docc) process-archive transform-for-static-hosting "$ARCHIVE_PATH" \
             --output-path docs \
             --hosting-base-path /arc
-
-      - name: Setup Pkldoc
-        run: |
-          PKLDOC_VERSION="0.30.2"
-          ARCH=$(uname -m)
-          if [ "$ARCH" = "arm64" ]; then
-            PKLDOC_URL="https://github.com/apple/pkl/releases/download/${PKLDOC_VERSION}/pkldoc-darwin-arm64"
-          else
-            PKLDOC_URL="https://github.com/apple/pkl/releases/download/${PKLDOC_VERSION}/pkldoc-darwin-amd64"
-          fi
-          curl -L -o pkldoc "$PKLDOC_URL"
-          chmod +x pkldoc
-          sudo mv pkldoc /usr/local/bin/
-
-      - name: Generate Pkldoc
-        run: |
-          mkdir -p docs/pkldoc
-          pkldoc \
-            --output-dir docs/pkldoc \
-            Sources/ArcCLI/Resources/doc-package-info.pkl \
-            Sources/ArcCLI/Resources/ArcConfiguration.pkl
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

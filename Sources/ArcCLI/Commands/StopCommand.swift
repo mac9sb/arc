@@ -29,11 +29,7 @@ public struct StopCommand: ParsableCommand {
         abstract: "Stop arc server"
     )
 
-    /// Path to the Pkl configuration file.
-    ///
-    /// Defaults to `config.pkl` in the current directory.
-    @Option(name: .shortAndLong, help: "Path to config file")
-    var config: String = "config.pkl"
+
 
     /// Optional process name to stop.
     ///
@@ -56,7 +52,7 @@ public struct StopCommand: ParsableCommand {
     ///
     /// - Throws: An error if process stopping fails.
     public func run() throws {
-        let configPath = config
+        let configPath = "ArcManifest.swift"
         let processName = name
         let stopAll = all
 

@@ -1,19 +1,15 @@
 # Configuring Arc
 
-Learn how to configure Arc using Pkl configuration files.
+Learn how to configure Arc using a Swift manifest.
 
 @Tutorial(time: 15) {
     @Intro(title: "Arc Configuration") {
-        Arc uses Pkl (Programmable Configuration Language) for flexible, type-safe configuration.
+        Arc uses a Swift manifest (`ArcManifest.swift`) for flexible, type-safe configuration.
     }
 
     @Section(title: "Configuration File Location") {
         @ContentAndMedia {
-            By default, Arc looks for `config.pkl` in your project root. You can specify a different path:
-
-            ```sh
-            arc start --config /path/to/config.pkl
-            ```
+            By default, Arc looks for `ArcManifest.swift` in your project root.
         }
     }
 
@@ -21,15 +17,16 @@ Learn how to configure Arc using Pkl configuration files.
         @ContentAndMedia {
             A minimal configuration includes:
 
-            ```pkl
-            proxyPort = 8080
-            sites {
-                new {
-                    name = "example"
-                    domain = "example.localhost"
-                    // ... site configuration
-                }
-            }
+            ```swift
+            import ArcDescription
+
+            let config = ArcConfiguration(
+                proxyPort: 8080,
+                sites: .init(
+                    services: [],
+                    pages: []
+                )
+            )
             ```
         }
     }
@@ -38,15 +35,21 @@ Learn how to configure Arc using Pkl configuration files.
         @ContentAndMedia {
             Configure static sites with:
 
-            ```pkl
-            sites {
-                new {
-                    name = "portfolio"
-                    domain = "portfolio.localhost"
-                    type = "static"
-                    outputPath = "static/portfolio/.output"
-                }
-            }
+            ```swift
+            import ArcDescription
+
+            let config = ArcConfiguration(
+                sites: .init(
+                    services: [],
+                    pages: [
+                        .init(
+                            name: "portfolio",
+                            domain: "portfolio.localhost",
+                            outputPath: "static/portfolio/.output"
+                        )
+                    ]
+                )
+            )
             ```
         }
     }
@@ -55,17 +58,26 @@ Learn how to configure Arc using Pkl configuration files.
         @ContentAndMedia {
             Configure dynamic applications:
 
-            ```pkl
-            sites {
-                new {
-                    name = "api"
-                    domain = "api.localhost"
-                    type = "app"
-                    workingDir = "apps/api"
-                    port = 8000
-                    healthPath = "/health"
-                }
-            }
+            ```swift
+            import ArcDescription
+
+            let config = ArcConfiguration(
+                sites: .init(
+                    services: [
+                        .init(
+                            name: "api",
+                            domain: "api.localhost",
+                            port: 8000,
+                            healthPath: "/health",
+                            process: .init(
+                                workingDir: "apps/api",
+                                executable: ".build/release/API"
+                            )
+                        )
+                    ],
+                    pages: []
+                )
+            )
             ```
         }
     }
@@ -74,12 +86,16 @@ Learn how to configure Arc using Pkl configuration files.
         @ContentAndMedia {
             Enable Cloudflare tunnel integration:
 
-            ```pkl
-            cloudflare {
-                enabled = true
-                tunnelName = "your-tunnel-name"
-                // or tunnelUUID = "your-tunnel-uuid"
-            }
+            ```swift
+            import ArcDescription
+
+            let config = ArcConfiguration(
+                cloudflare: .init(
+                    enabled: true,
+                    tunnelName: "your-tunnel-name",
+                    tunnelUUID: nil
+                )
+            )
             ```
         }
     }

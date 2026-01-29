@@ -1,0 +1,36 @@
+import ArcDescription
+
+let config = ArcConfiguration(
+    processName: "example-arc",
+    sites: .init(
+        services: [
+            .init(
+                name: "example-api",
+                domain: "example-api.localhost",
+                port: 8000,
+                process: .init(
+                    workingDir: "apps/example-api",
+                    executable: ".build/release/ExampleAPI"
+                )
+            )
+        ],
+        pages: [
+            .init(
+                name: "example-site",
+                domain: "example-site.localhost",
+                outputPath: "static/example-site/.output"
+            )
+        ]
+    ),
+    cloudflare: .init(
+        enabled: false,
+        cloudflaredPath: "/opt/homebrew/bin/cloudflared",
+        tunnelName: nil,
+        tunnelUUID: nil
+    ),
+    ssh: .init(
+        enabled: true,
+        domain: "ssh.maclong.dev"
+    ),
+    watch: .init()
+)

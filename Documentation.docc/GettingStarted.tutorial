@@ -35,16 +35,23 @@ Learn how to set up and use Arc for local development.
 
     @Section(title: "Configure Your Sites") {
         @ContentAndMedia {
-            Edit `config.pkl` to add your static sites and applications:
+            Edit `ArcManifest.swift` to add your static sites and applications:
 
-            ```pkl
-            sites {
-                new {
-                    name = "my-site"
-                    domain = "mysite.localhost"
-                    // ... configuration
-                }
-            }
+            ```swift
+            import ArcDescription
+
+            let config = ArcConfiguration(
+                sites: .init(
+                    services: [],
+                    pages: [
+                        .init(
+                            name: "my-site",
+                            domain: "mysite.localhost",
+                            outputPath: "static/my-site/.output"
+                        )
+                    ]
+                )
+            )
             ```
         }
     }

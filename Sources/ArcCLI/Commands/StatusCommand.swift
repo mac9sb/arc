@@ -3,7 +3,7 @@ import ArcServer
 import ArgumentParser
 import Foundation
 import Noora
-import PklSwift
+
 
 /// Thread-safe box for passing errors from async Tasks
 private final class ErrorBox: @unchecked Sendable {
@@ -42,11 +42,7 @@ public struct StatusCommand: ParsableCommand {
         abstract: "Show arc server status"
     )
 
-    /// Path to the Pkl configuration file.
-    ///
-    /// Defaults to `config.pkl` in the current directory.
-    @Option(name: .shortAndLong, help: "Path to config file")
-    var config: String = "config.pkl"
+
 
     /// Optional process name to inspect.
     ///
@@ -66,7 +62,7 @@ public struct StatusCommand: ParsableCommand {
     ///
     /// - Throws: An error if configuration loading or process inspection fails.
     public func run() throws {
-        let configPath = config
+        let configPath = "ArcManifest.swift"
         let processName = name
         let isVerbose = verbose
 

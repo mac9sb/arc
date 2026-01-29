@@ -18,7 +18,7 @@ cd apps/<app-name>
 swift build -c release
 ```
 
-Apps are configured in `config.pkl` with `kind = "app"` and require a port assignment.
+Apps are configured in `ArcManifest.swift` with `sites.services` and require a port assignment.
 
 > [!NOTE]
 > Your app doesn't have to be a Swift Hummingbird application that is just used for example, realistically anything you can start as a script or exectuable will work fine.
@@ -37,11 +37,11 @@ cd static/<site-name>
 swift run
 ```
 
-This generates the site into a `.output` directory. Sites are configured in `config.pkl` with `kind = "static"`.
+This generates the site into a `.output` directory. Sites are configured in `ArcManifest.swift` with `sites.pages`.
 
-### `config.pkl`
+### `ArcManifest.swift`
 
-Arc server configuration defining all hosted sites and services. The schema is loaded from `modulepath:/ArcConfiguration.pkl` (installed under `/opt/homebrew/share/arc` or `/usr/local/share/arc`).
+Arc server configuration defining all hosted sites and services. The manifest is a Swift file that constructs an `ArcConfiguration`.
 
 ## Running the Server
 
@@ -53,7 +53,7 @@ arc logs               # View logs
 arc stop               # Stop running servers
 ```
 
-The server proxies requests based on domain configuration in `config.pkl`.
+The server proxies requests based on domain configuration in `ArcManifest.swift`.
 
 ### Cloudflare tunnel and "cannot be reached"
 
@@ -68,6 +68,6 @@ Run `arc start -v` to see tunnel hints when cloudflared starts.
 
 Arc automatically watches for changes and reloads as needed:
 
-- **Config changes** — Modifications to `config.pkl` trigger a full configuration reload
+- **Config changes** — Modifications to `ArcManifest.swift` trigger a full configuration reload
 - **App binaries** — Rebuilt executables in `apps/` are detected and the corresponding process is restarted
 - **Static outputs** — Regenerated `.output` directories in `static/` are picked up immediately

@@ -14,21 +14,34 @@ Arc simplifies local development by providing:
 
 ## Getting Started
 
-See the ``GettingStarted`` tutorial to set up your first Arc project.
+See the <doc:GettingStarted> tutorial to set up your first Arc project.
 
 ## Configuration
 
-Arc uses Pkl (Programmable Configuration Language) for configuration. See the ``Configuration`` tutorial for details on setting up your `config.pkl` file.
+Arc uses a Swift manifest named `ArcManifest.swift` for configuration. See the <doc:Configuration> tutorial for details on setting up your manifest file.
 
-For complete Pkl configuration schema documentation, see the [Pkl Configuration Documentation](/arc/pkldoc/).
+### Swift Manifests (New)
+
+Arc now uses native Swift for configuration instead of Pkl. This provides:
+
+- **Type Safety**: Catch errors at compile time
+- **No External Dependencies**: Just the Swift toolchain
+- **Better IDE Support**: Full autocomplete and refactoring
+- **Dynamic Configuration**: Use environment variables and Swift logic
+
+See <doc:Examples> for example configurations and <doc:Migration> if you're migrating from Pkl.
+
+For complete configuration schema documentation, see ``ArcConfiguration``.
 
 ## Commands
 
-- ``init`` - Initialize a new Arc project
-- ``run`` - Start the Arc server
-- ``stop`` - Stop running Arc servers
-- ``status`` - Check the status of running servers
-- ``logs`` - View server logs
+- `arc run` - Start the Arc server
+- `arc stop` - Stop running Arc servers
+- `arc status` - Check the status of running servers
+- `arc logs` - View server logs
+- `arc doctor` - Run diagnostics and health checks
+
+See <doc:Commands> for detailed command documentation.
 
 ## Architecture
 
@@ -36,4 +49,33 @@ Arc consists of several modules:
 
 - **ArcCLI**: Command-line interface and argument parsing
 - **ArcCore**: Core configuration and process management
+- **ArcDescription**: Swift manifest type definitions
 - **ArcServer**: HTTP server and proxy functionality
+
+## Topics
+
+### Getting Started
+
+- <doc:GettingStarted>
+- <doc:Configuration>
+- <doc:Examples>
+
+### Migration
+
+- <doc:Migration>
+
+### Deployment
+
+- <doc:Deployment>
+
+### Implementation
+
+- <doc:SwiftManifestImplementation>
+- <doc:ArcManifest-PRD>
+
+### Reference
+
+- <doc:Commands>
+- ``ArcConfiguration``
+- ``ServiceSite``
+- ``StaticSite``
