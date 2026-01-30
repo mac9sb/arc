@@ -194,12 +194,25 @@ public final class HTTPServer: @unchecked Sendable {
     }
 }
 
-/// Sendable wrapper for ChannelHandlerContext pointer
+/// Sendable wrapper for ChannelHandlerContext pointer.
+///
+/// **Thread Safety Rationale:**
+/// - Wraps an UnsafeRawPointer to ChannelHandlerContext
+/// - Safe because the pointer is only dereferenced on the correct event loop
+/// - The context ref is passed between tasks but only accessed when scheduled
+///   back onto its original event loop via eventLoop.execute
 private struct ContextRef: @unchecked Sendable {
     let ptr: UnsafeRawPointer
 }
 
 /// NIO channel handler that processes HTTP requests.
+///
+/// **Thread Safety Rationale:**
+/// - Marked `@unchecked Sendable` to satisfy NIO's ChannelHandler requirements
+/// - All mutable state (`requestBuffer`, `currentRequest`) is accessed only
+///   on the channel's event loop, providing serial execution guarantees
+/// - The `server` property is an immutable reference to an actor (inherently Sendable)
+/// - NIO ensures all handler methods are called on the same event loop
 private final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
     typealias InboundIn = HTTPServerRequestPart
     typealias OutboundOut = HTTPServerResponsePart

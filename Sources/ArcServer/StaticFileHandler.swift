@@ -13,7 +13,7 @@ import UniformTypeIdentifiers
 /// let handler = StaticFileHandler(config: arcConfig)
 /// let response = handler.handle(request: httpRequest, site: staticSite, baseDir: baseDir)
 /// ```
-struct StaticFileHandler {
+public struct StaticFileHandler {
     private let config: ArcConfig
 
     /// Creates a new static file handler.

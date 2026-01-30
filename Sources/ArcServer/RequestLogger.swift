@@ -15,7 +15,7 @@ import Logging
 /// // ... process request ...
 /// logger.logResponse(response, context: context)
 /// ```
-struct RequestLogger: Sendable {
+public struct RequestLogger: Sendable {
     private let logger: StructuredLogger
     private let logLevel: Logger.Level
 
