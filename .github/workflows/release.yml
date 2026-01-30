@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     name: Build for macos-aarch64
-    runs-on: macos-26
+    runs-on: macos-15
     strategy:
       fail-fast: false
       matrix:
@@ -97,7 +97,7 @@ jobs:
   publish-docs:
     name: Publish Documentation
     needs: build
-    runs-on: macos-26
+    runs-on: macos-15
     permissions:
       contents: read
       pages: write
