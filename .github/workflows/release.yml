@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    name: Build for macos-aarch64
+    name: Build Binary
     runs-on: macos-15
 
     steps:
@@ -20,28 +20,6 @@ jobs:
         uses: swift-actions/setup-swift@v2
         with:
           swift-version: "6.2"
-
-      - name: Cache Swift toolchain
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.swift
-            /usr/local/swift
-          key: swift-6.2-macos-aarch64
-          restore-keys: |
-            swift-6.2-macos-
-
-      - name: Resolve dependencies
-        run: swift package resolve
-
-      - name: Cache SPM dependencies
-        uses: actions/cache@v4
-        with:
-          path: .build
-          key: spm-${{ hashFiles('Package.resolved') }}-macos-aarch64-6.2
-          restore-keys: |
-            spm-macos-aarch64-6.2-
-            spm-macos-aarch64-
 
       - name: Build
         run: |
@@ -75,7 +53,6 @@ jobs:
           fetch-depth: 0
 
       - name: Generate Changelog
-        id: changelog
         run: |
           TAG="${{ github.ref_name }}"
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
@@ -96,7 +73,7 @@ jobs:
           echo "" >> CHANGELOG.md
           echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${TAG}" >> CHANGELOG.md
 
-      - name: Download all artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -114,55 +91,3 @@ jobs:
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  publish-docs:
-    name: Publish Documentation
-    needs: build
-    runs-on: macos-15
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Swift
-        uses: swift-actions/setup-swift@v2
-        with:
-          swift-version: "6.2"
-
-      - name: Resolve dependencies
-        run: swift package resolve
-
-      - name: Build DocC documentation
-        run: |
-          swift package generate-documentation
-
-      - name: Process DocC archive for static hosting
-        run: |
-          ARCHIVE_PATH=$(find .build -name "*.doccarchive" -type d | head -n 1)
-          if [ -z "$ARCHIVE_PATH" ]; then
-            echo "No doccarchive found"
-            exit 1
-          fi
-          mkdir -p docs
-          $(xcrun --find docc) process-archive transform-for-static-hosting "$ARCHIVE_PATH" \
-            --output-path docs \
-            --hosting-base-path /arc
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
