@@ -278,7 +278,7 @@ public struct StatusCommand: ParsableCommand {
             let mainCpu = usage?.cpuPercent ?? 0.0
             let mainRam = usage?.memoryMB ?? 0.0
             let mainStatus = isRunning ? "🟢" : "🔴"
-            let sshStatus = (config.ssh?.enabled ?? false) ? "✅" : "❌"
+            let sshStatus = (config.ssh != nil) ? "✅" : "❌"
             processRows.append([
                 mainStatus + " " + descriptor.name,
                 String(descriptor.pid),
@@ -396,8 +396,8 @@ public struct StatusCommand: ParsableCommand {
                 }
             }
 
-            // Show cloudflared if enabled
-            if let tunnel = config.cloudflare, tunnel.enabled {
+            // Show cloudflared if configured
+            if let tunnel = config.cloudflare {
                 let cloudflaredPath = (tunnel.cloudflaredPath as NSString).expandingTildeInPath
                 let cloudflaredRunning = Self.checkCloudflaredRunning(executablePath: cloudflaredPath)
                 let cloudflaredStatus = cloudflaredRunning ? "🟢" : "🔴"

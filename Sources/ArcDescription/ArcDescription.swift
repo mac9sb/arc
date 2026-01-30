@@ -145,7 +145,7 @@ public struct ArcConfiguration: Codable, Sendable, Hashable {
         get { extensions?.cloudflare }
         set {
             if extensions == nil {
-                extensions = Extensions()
+                extensions = Extensions(cloudflare: nil, ssh: nil)
             }
             extensions?.cloudflare = newValue
         }
@@ -159,7 +159,7 @@ public struct ArcConfiguration: Codable, Sendable, Hashable {
         get { extensions?.ssh }
         set {
             if extensions == nil {
-                extensions = Extensions()
+                extensions = Extensions(cloudflare: nil, ssh: nil)
             }
             extensions?.ssh = newValue
         }
@@ -173,7 +173,7 @@ public struct ArcConfiguration: Codable, Sendable, Hashable {
         version: String = "V.2.0.0",
         region: String? = nil,
         processName: String? = nil,
-        sites: Sites = Sites(),
+        sites: Sites = Sites(services: [], pages: []),
         watch: WatchConfig = WatchConfig(),
         extensions: Extensions? = nil,
         cloudflare: CloudflareConfig? = nil,
@@ -239,7 +239,7 @@ extension Array where Element: Hashable {
 /// Optional extensions and integrations.
 ///
 /// Groups optional modules like Cloudflare tunnels and SSH configuration.
-public struct Extensions: Codable, Sendable, Hashable {
+public struct Extensions: Codable, Sendable, Hashable, ExpressibleByArrayLiteral {
     /// Cloudflare Tunnel configuration.
     ///
     /// Optional Cloudflare Tunnel integration for exposing local services.
@@ -266,12 +266,52 @@ public struct Extensions: Codable, Sendable, Hashable {
         self.ssh = ssh
     }
 
-    /// Creates an Extensions configuration with cleaner static factory method.
-    public static func extensions(
-        cloudflare: CloudflareConfig? = nil,
-        ssh: SshConfig? = nil
-    ) -> Extensions {
-        Extensions(cloudflare: cloudflare, ssh: ssh)
+    /// Support array literal syntax with extension elements.
+    public init(arrayLiteral elements: ExtensionElement...) {
+        var cloudflare: CloudflareConfig? = nil
+        var ssh: SshConfig? = nil
+
+        for element in elements {
+            switch element {
+            case .cloudflare(let config):
+                cloudflare = config
+            case .ssh(let config):
+                ssh = config
+            }
+        }
+
+        self.cloudflare = cloudflare
+        self.ssh = ssh
+    }
+}
+
+/// Element type for Extensions array literal.
+public enum ExtensionElement {
+    case cloudflare(CloudflareConfig)
+    case ssh(SshConfig)
+
+    /// Creates a Cloudflare tunnel extension element.
+    public static func cloudflare(
+        cloudflaredPath: String = "/opt/homebrew/bin/cloudflared",
+        tunnelName: String? = nil,
+        tunnelUUID: String? = nil
+    ) -> ExtensionElement {
+        .cloudflare(CloudflareConfig.cloudflare(
+            cloudflaredPath: cloudflaredPath,
+            tunnelName: tunnelName,
+            tunnelUUID: tunnelUUID
+        ))
+    }
+
+    /// Creates an SSH extension element.
+    public static func ssh(
+        domain: String,
+        port: Int = 22
+    ) -> ExtensionElement {
+        .ssh(SshConfig.ssh(
+            domain: domain,
+            port: port
+        ))
     }
 }
 
@@ -306,7 +346,7 @@ public struct Extensions: Codable, Sendable, Hashable {
 ///
 /// - ``ServiceSite``
 /// - ``StaticSite``
-public struct Sites: Codable, Sendable, Hashable {
+public struct Sites: Codable, Sendable, Hashable, ExpressibleByArrayLiteral {
     /// Backend or full-stack services.
     ///
     /// Array of dynamic applications that Arc will start, monitor, and proxy to.
@@ -333,12 +373,22 @@ public struct Sites: Codable, Sendable, Hashable {
         self.pages = pages
     }
 
-    /// Creates a Sites configuration with services and pages.
-    public static func sites(
-        services: [ServiceSite] = [],
-        pages: [StaticSite] = []
-    ) -> Sites {
-        Sites(services: services, pages: pages)
+    /// Support array literal syntax with mixed ServiceSite and StaticSite elements.
+    public init(arrayLiteral elements: SiteElement...) {
+        var services: [ServiceSite] = []
+        var pages: [StaticSite] = []
+
+        for element in elements {
+            switch element {
+            case .service(let site):
+                services.append(site)
+            case .page(let site):
+                pages.append(site)
+            }
+        }
+
+        self.services = services
+        self.pages = pages
     }
 
     /// Validates the sites configuration.
@@ -356,6 +406,46 @@ public struct Sites: Codable, Sendable, Hashable {
         if !duplicatePorts.isEmpty {
             throw ValidationError.duplicatePorts(Array(Set(duplicatePorts)))
         }
+    }
+}
+
+/// Element type for Sites array literal.
+public enum SiteElement {
+    case service(ServiceSite)
+    case page(StaticSite)
+
+    /// Creates a service site element.
+    public static func service(
+        name: String,
+        domain: String,
+        port: Int,
+        healthPath: String = "/health",
+        process: ProcessConfig,
+        watchTargets: [String]? = nil
+    ) -> SiteElement {
+        .service(ServiceSite.service(
+            name: name,
+            domain: domain,
+            port: port,
+            healthPath: healthPath,
+            process: process,
+            watchTargets: watchTargets
+        ))
+    }
+
+    /// Creates a static page site element.
+    public static func page(
+        name: String,
+        domain: String,
+        outputPath: String,
+        watchTargets: [String]? = nil
+    ) -> SiteElement {
+        .page(StaticSite.page(
+            name: name,
+            domain: domain,
+            outputPath: outputPath,
+            watchTargets: watchTargets
+        ))
     }
 }
 
@@ -848,7 +938,6 @@ public struct WatchConfig: Codable, Sendable, Hashable {
 ///
 /// ```swift
 /// let cloudflare = CloudflareConfig(
-///     enabled: true,
 ///     cloudflaredPath: "/opt/homebrew/bin/cloudflared",
 ///     tunnelName: "my-tunnel",
 ///     tunnelUUID: "12345678-1234-1234-1234-123456789abc"
@@ -859,7 +948,6 @@ public struct WatchConfig: Codable, Sendable, Hashable {
 ///
 /// ### Configuration
 ///
-/// - ``enabled``
 /// - ``cloudflaredPath``
 /// - ``tunnelName``
 /// - ``tunnelUUID``
@@ -868,14 +956,6 @@ public struct WatchConfig: Codable, Sendable, Hashable {
 ///
 /// - ``SshConfig``
 public struct CloudflareConfig: Codable, Sendable, Hashable {
-    /// Whether to enable the Cloudflare Tunnel.
-    ///
-    /// When `true`, Arc starts cloudflared and routes traffic through the tunnel.
-    ///
-    /// - Note: Default is `false`
-    /// - Precondition: When enabled, either `tunnelName` or `tunnelUUID` must be provided
-    public var enabled: Bool
-
     /// Path to cloudflared executable.
     ///
     /// Path to the `cloudflared` binary. Can be absolute or relative.
@@ -896,13 +976,11 @@ public struct CloudflareConfig: Codable, Sendable, Hashable {
 
     /// Creates a CloudflareConfig with a cleaner static factory method.
     public static func cloudflare(
-        enabled: Bool = false,
         cloudflaredPath: String = "/opt/homebrew/bin/cloudflared",
         tunnelName: String? = nil,
         tunnelUUID: String? = nil
     ) -> CloudflareConfig {
         CloudflareConfig(
-            enabled: enabled,
             cloudflaredPath: cloudflaredPath,
             tunnelName: tunnelName,
             tunnelUUID: tunnelUUID
@@ -910,7 +988,6 @@ public struct CloudflareConfig: Codable, Sendable, Hashable {
     }
 
     public init(
-        enabled: Bool = false,
         cloudflaredPath: String = "/opt/homebrew/bin/cloudflared",
         tunnelName: String? = nil,
         tunnelUUID: String? = nil
@@ -918,15 +995,12 @@ public struct CloudflareConfig: Codable, Sendable, Hashable {
         // Validate cloudflared path
         precondition(!cloudflaredPath.isEmpty, "Cloudflared path cannot be empty")
 
-        // If enabled, require tunnel name or UUID
-        if enabled {
-            precondition(
-                tunnelName != nil || tunnelUUID != nil,
-                "When Cloudflare tunnel is enabled, either tunnelName or tunnelUUID must be provided"
-            )
-        }
+        // Require tunnel name or UUID
+        precondition(
+            tunnelName != nil || tunnelUUID != nil,
+            "Either tunnelName or tunnelUUID must be provided"
+        )
 
-        self.enabled = enabled
         self.cloudflaredPath = cloudflaredPath
         self.tunnelName = tunnelName
         self.tunnelUUID = tunnelUUID
@@ -943,7 +1017,6 @@ public struct CloudflareConfig: Codable, Sendable, Hashable {
 ///
 /// ```swift
 /// let ssh = SshConfig(
-///     enabled: true,
 ///     domain: "ssh.example.com",
 ///     port: 22
 /// )
@@ -953,7 +1026,6 @@ public struct CloudflareConfig: Codable, Sendable, Hashable {
 ///
 /// ### Configuration
 ///
-/// - ``enabled``
 /// - ``domain``
 /// - ``port``
 ///
@@ -961,20 +1033,12 @@ public struct CloudflareConfig: Codable, Sendable, Hashable {
 ///
 /// - ``CloudflareConfig``
 public struct SshConfig: Codable, Sendable, Hashable {
-    /// Whether to enable SSH access via Cloudflare tunnel.
-    ///
-    /// When `true`, Arc configures the Cloudflare tunnel to forward SSH traffic.
-    ///
-    /// - Note: Default is `false`
-    /// - Precondition: When enabled, `domain` must be provided
-    public var enabled: Bool
-
     /// Domain for SSH access via Cloudflare tunnel.
     ///
     /// The domain that will route to SSH (e.g., "ssh.example.com").
     ///
-    /// - Precondition: Required when `enabled` is `true`, cannot be empty
-    public var domain: String?
+    /// - Precondition: Cannot be empty
+    public var domain: String
 
     /// Local SSH port to forward.
     ///
@@ -986,31 +1050,25 @@ public struct SshConfig: Codable, Sendable, Hashable {
 
     /// Creates an SshConfig with a cleaner static factory method.
     public static func ssh(
-        enabled: Bool = false,
-        domain: String? = nil,
+        domain: String,
         port: Int = 22
     ) -> SshConfig {
         SshConfig(
-            enabled: enabled,
             domain: domain,
             port: port
         )
     }
 
     public init(
-        enabled: Bool = false,
-        domain: String? = nil,
+        domain: String,
         port: Int = 22
     ) {
         // Validate SSH port
         precondition(port > 0 && port < 65536, "SSH port must be in range 1-65535, got \(port)")
 
-        // If enabled, require domain
-        if enabled {
-            precondition(domain != nil && !domain!.isEmpty, "When SSH is enabled, domain must be provided")
-        }
+        // Validate domain
+        precondition(!domain.isEmpty, "SSH domain cannot be empty")
 
-        self.enabled = enabled
         self.domain = domain
         self.port = port
     }

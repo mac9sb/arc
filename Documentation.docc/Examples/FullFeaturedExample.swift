@@ -31,103 +31,97 @@ let config = ArcConfiguration(
     processName: "production-cluster",
 
     // Site configuration
-    sites: .init(
+    sites: [
         // Backend/full-stack services
-        services: [
-            // Example: Full-featured service with all options
-            .init(
-                name: "api-gateway",
-                domain: "api.example.com",
-                port: 8000,
-                healthPath: "/health",
-                process: .init(
-                    workingDir: "apps/api-gateway/Web/",
-                    executable: ".build/arm64-apple-macosx/release/APIGateway",
-                    env: [
-                        "DATABASE_URL": "postgresql://\(dbHost):5432/api",
-                        "REDIS_URL": "redis://\(dbHost):6379",
-                        "LOG_LEVEL": isDevelopment ? "debug" : "info",
-                        "API_KEY": ProcessInfo.processInfo.environment["API_KEY"] ?? ""
-                    ]
-                ),
-                watchTargets: [
-                    "apps/api-gateway/Sources/",
-                    "apps/api-gateway/Package.swift"
+        // Example: Full-featured service with all options
+        .service(
+            name: "api-gateway",
+            domain: "api.example.com",
+            port: 8000,
+            healthPath: "/health",
+            process: .process(
+                workingDir: "apps/api-gateway/Web/",
+                executable: ".build/arm64-apple-macosx/release/APIGateway",
+                env: [
+                    "DATABASE_URL": "postgresql://\(dbHost):5432/api",
+                    "REDIS_URL": "redis://\(dbHost):6379",
+                    "LOG_LEVEL": isDevelopment ? "debug" : "info",
+                    "API_KEY": ProcessInfo.processInfo.environment["API_KEY"] ?? ""
                 ]
             ),
+            watchTargets: [
+                "apps/api-gateway/Sources/",
+                "apps/api-gateway/Package.swift"
+            ]
+        ),
 
-            // Example: Service using command instead of executable
-            .init(
-                name: "worker",
-                domain: "worker.example.com",
-                port: 8001,
-                healthPath: "/status",
-                process: .init(
-                    workingDir: "apps/worker/",
-                    command: "swift",
-                    args: ["run", "WorkerService"],
-                    env: [
-                        "QUEUE_URL": "redis://\(dbHost):6379/1",
-                        "WORKER_THREADS": "4"
-                    ]
-                )
-            ),
-
-            // Example: Minimal service configuration
-            .init(
-                name: "auth-service",
-                domain: "auth.example.com",
-                port: 8002,
-                process: .init(
-                    workingDir: "apps/auth/Web/",
-                    executable: ".build/release/AuthService"
-                )
+        // Example: Service using command instead of executable
+        .service(
+            name: "worker",
+            domain: "worker.example.com",
+            port: 8001,
+            healthPath: "/status",
+            process: .process(
+                workingDir: "apps/worker/",
+                command: "swift",
+                args: ["run", "WorkerService"],
+                env: [
+                    "QUEUE_URL": "redis://\(dbHost):6379/1",
+                    "WORKER_THREADS": "4"
+                ]
             )
-        ],
+        ),
+
+        // Example: Minimal service configuration
+        .service(
+            name: "auth-service",
+            domain: "auth.example.com",
+            port: 8002,
+            process: .process(
+                workingDir: "apps/auth/Web/",
+                executable: ".build/release/AuthService"
+            )
+        ),
 
         // Static page sites
-        pages: [
-            // Example: Main marketing site
-            .init(
-                name: "marketing",
-                domain: "example.com",
-                outputPath: "static/marketing/.output",
-                watchTargets: [
-                    "static/marketing/Sources/",
-                    "static/marketing/Package.swift"
-                ]
-            ),
+        // Example: Main marketing site
+        .page(
+            name: "marketing",
+            domain: "example.com",
+            outputPath: "static/marketing/.output",
+            watchTargets: [
+                "static/marketing/Sources/",
+                "static/marketing/Package.swift"
+            ]
+        ),
 
-            // Example: Documentation site
-            .init(
-                name: "docs",
-                domain: "docs.example.com",
-                outputPath: "static/docs/.output"
-            ),
+        // Example: Documentation site
+        .page(
+            name: "docs",
+            domain: "docs.example.com",
+            outputPath: "static/docs/.output"
+        ),
 
-            // Example: Blog
-            .init(
-                name: "blog",
-                domain: "blog.example.com",
-                outputPath: "static/blog/.output"
-            )
-        ]
-    ),
+        // Example: Blog
+        .page(
+            name: "blog",
+            domain: "blog.example.com",
+            outputPath: "static/blog/.output"
+        )
+    ],
 
-    // Cloudflare Tunnel configuration
-    cloudflare: .init(
-        enabled: true,
-        cloudflaredPath: "/opt/homebrew/bin/cloudflared",
-        tunnelName: "my-production-tunnel",
-        tunnelUUID: "12345678-1234-1234-1234-123456789abc"
-    ),
-
-    // SSH access via Cloudflare tunnel
-    ssh: .init(
-        enabled: true,
-        domain: "ssh.example.com",
-        port: 22
-    ),
+    // Extensions: Cloudflare Tunnel and SSH access
+    extensions: [
+        .cloudflare(
+            cloudflaredPath: "/opt/homebrew/bin/cloudflared",
+            tunnelName: "my-production-tunnel",
+            tunnelUUID: "12345678-1234-1234-1234-123456789abc"
+        ),
+        .ssh(
+            domain: "ssh.example.com",
+            port: 22
+        )
+    ],
 
     // File watching and hot-reload configuration
     watch: .init(

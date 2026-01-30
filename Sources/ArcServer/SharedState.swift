@@ -107,7 +107,7 @@ public actor SharedState {
     /// - Returns: The process ID if cloudflared was started, `nil` if disabled.
     /// - Throws: An error if cloudflared cannot be started or configuration is invalid.
     public func startCloudflared(config: ArcConfig) async throws -> pid_t? {
-        guard let tunnel = config.cloudflare, tunnel.enabled else {
+        guard let tunnel = config.cloudflare else {
             return nil
         }
 
@@ -177,8 +177,8 @@ public actor SharedState {
     /// - Returns: The process ID if cloudflared was restarted, `nil` if disabled.
     /// - Throws: An error if cloudflared cannot be restarted or configuration is invalid.
     public func restartCloudflared(config: ArcConfig) async throws -> pid_t? {
-        guard let tunnel = config.cloudflare, tunnel.enabled else {
-            // If disabled, stop any running cloudflared
+        guard let tunnel = config.cloudflare else {
+            // If not configured, stop any running cloudflared
             stopCloudflared()
             return nil
         }

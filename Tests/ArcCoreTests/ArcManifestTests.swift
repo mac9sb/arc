@@ -120,16 +120,17 @@ struct ArcManifestTests {
         import ArcDescription
 
         let config = ArcConfiguration(
-            cloudflare: .init(
-                enabled: true,
-                tunnelName: "test-tunnel",
-                tunnelUUID: "12345678-1234-1234-1234-123456789abc"
-            )
+            extensions: [
+                .cloudflare(.cloudflare(
+                    tunnelName: "test-tunnel",
+                    tunnelUUID: "12345678-1234-1234-1234-123456789abc"
+                ))
+            ]
         )
         """
 
         let config = try loadManifestFromString(manifestContent)
-        #expect(config.cloudflare?.enabled == true)
+        #expect(config.cloudflare != nil)
         #expect(config.cloudflare?.tunnelName == "test-tunnel")
         #expect(config.cloudflare?.tunnelUUID == "12345678-1234-1234-1234-123456789abc")
     }
@@ -140,16 +141,17 @@ struct ArcManifestTests {
         import ArcDescription
 
         let config = ArcConfiguration(
-            ssh: .init(
-                enabled: true,
-                domain: "ssh.example.com",
-                port: 22
-            )
+            extensions: [
+                .ssh(.ssh(
+                    domain: "ssh.example.com",
+                    port: 22
+                ))
+            ]
         )
         """
 
         let config = try loadManifestFromString(manifestContent)
-        #expect(config.ssh?.enabled == true)
+        #expect(config.ssh != nil)
         #expect(config.ssh?.domain == "ssh.example.com")
         #expect(config.ssh?.port == 22)
     }
@@ -348,7 +350,6 @@ struct ArcManifestTests {
     func rejectCloudflareWithoutTunnel() {
         #expect(throws: Error.self) {
             _ = CloudflareConfig(
-                enabled: true,
                 tunnelName: nil,
                 tunnelUUID: nil
             )
@@ -359,8 +360,7 @@ struct ArcManifestTests {
     func rejectSSHWithoutDomain() {
         #expect(throws: Error.self) {
             _ = SshConfig(
-                enabled: true,
-                domain: nil
+                domain: ""
             )
         }
     }
@@ -418,7 +418,6 @@ struct ArcManifestTests {
     @Test("Accept Cloudflare with tunnel name only")
     func acceptCloudflareWithNameOnly() throws {
         let cf = CloudflareConfig(
-            enabled: true,
             tunnelName: "test-tunnel"
         )
         #expect(cf.tunnelName == "test-tunnel")
@@ -428,7 +427,6 @@ struct ArcManifestTests {
     @Test("Accept Cloudflare with UUID only")
     func acceptCloudflareWithUUIDOnly() throws {
         let cf = CloudflareConfig(
-            enabled: true,
             tunnelUUID: "12345678-1234-1234-1234-123456789abc"
         )
         #expect(cf.tunnelUUID == "12345678-1234-1234-1234-123456789abc")

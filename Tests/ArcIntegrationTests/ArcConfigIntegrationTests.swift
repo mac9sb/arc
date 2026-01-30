@@ -239,24 +239,21 @@ struct ArcConfigIntegrationTests {
 
     @Test("CloudflareTunnel has correct defaults")
     func testCloudflareTunnelDefaults() {
-        let tunnel = CloudflareTunnel()
+        let tunnel = CloudflareTunnel(tunnelName: "test-tunnel")
 
-        #expect(tunnel.enabled == false)
         #expect(tunnel.cloudflaredPath == "/opt/homebrew/bin/cloudflared")
-        #expect(tunnel.tunnelName == nil)
+        #expect(tunnel.tunnelName == "test-tunnel")
         #expect(tunnel.tunnelUUID == nil)
     }
 
     @Test("CloudflareTunnel can be fully configured")
     func testCloudflareTunnelCustom() {
         let tunnel = CloudflareTunnel(
-            enabled: true,
             cloudflaredPath: "/usr/local/bin/cloudflared",
             tunnelName: "my-tunnel",
             tunnelUUID: "abc-123-def"
         )
 
-        #expect(tunnel.enabled == true)
         #expect(tunnel.cloudflaredPath == "/usr/local/bin/cloudflared")
         #expect(tunnel.tunnelName == "my-tunnel")
         #expect(tunnel.tunnelUUID == "abc-123-def")
@@ -266,22 +263,19 @@ struct ArcConfigIntegrationTests {
 
     @Test("SshConfig has correct defaults")
     func testSshConfigDefaults() {
-        let sshConfig = SshConfig()
+        let sshConfig = SshConfig(domain: "ssh.test.com")
 
-        #expect(sshConfig.enabled == false)
-        #expect(sshConfig.domain == nil)
+        #expect(sshConfig.domain == "ssh.test.com")
         #expect(sshConfig.port == 22)
     }
 
     @Test("SshConfig can be fully configured")
     func testSshConfigCustom() {
         let sshConfig = SshConfig(
-            enabled: true,
             domain: "ssh.example.com",
             port: 2222
         )
 
-        #expect(sshConfig.enabled == true)
         #expect(sshConfig.domain == "ssh.example.com")
         #expect(sshConfig.port == 2222)
     }

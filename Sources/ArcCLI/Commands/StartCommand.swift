@@ -566,7 +566,7 @@ public struct StartCommand: ParsableCommand {
     // MARK: - Helpers
 
     private static func startCloudflared(config: ArcConfig, state: SharedState, verbose: Bool) async throws {
-        guard let tunnel = config.cloudflare, tunnel.enabled else {
+        guard let tunnel = config.cloudflare else {
             if verbose {
                 Noora().info("Cloudflared tunnel is disabled in configuration")
             }

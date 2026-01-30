@@ -5,14 +5,11 @@ import ArcDescription
 
 let config = ArcConfiguration(
     processName: "my-server",
-    sites: .init(
-        services: [],
-        pages: [
-            .init(
-                name: "portfolio",
-                domain: "example.com",
-                outputPath: "static/portfolio/.output"
-            )
-        ]
-    )
+    sites: [
+        .page(
+            name: "portfolio",
+            domain: "example.com",
+            outputPath: "static/portfolio/.output"
+        )
+    ]
 )
