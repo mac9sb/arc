@@ -4,21 +4,21 @@ import Foundation
 ///
 /// Contains all components of an HTTP response including status code, headers,
 /// and body. Can be serialized to raw HTTP response data.
-struct HTTPResponse {
+public struct HTTPResponse: Sendable {
     /// HTTP status code (e.g., 200, 404, 500).
-    let statusCode: Int
+    public let statusCode: Int
 
     /// HTTP reason phrase (e.g., "OK", "Not Found", "Internal Server Error").
-    let reason: String
+    public let reason: String
 
     /// HTTP headers as a dictionary.
     ///
     /// Headers like "Content-Length" and "Connection" are automatically
     /// added during serialization.
-    var headers: [String: String]
+    public let headers: [String: String]
 
     /// Response body data.
-    var body: Data
+    public let body: Data
 
     /// Creates a new HTTP response.
     ///
@@ -27,14 +27,14 @@ struct HTTPResponse {
     ///   - reason: The HTTP reason phrase.
     ///   - headers: HTTP headers dictionary.
     ///   - body: Response body data.
-    init(status: Int, reason: String, headers: [String: String], body: Data) {
+    public init(status: Int, reason: String, headers: [String: String], body: Data) {
         self.statusCode = status
         self.reason = reason
         self.headers = headers
         self.body = body
     }
 
-    func serialize() -> Data {
+    public func serialize() -> Data {
         var responseLines = ["HTTP/1.1 \(statusCode) \(reason)"]
         var mergedHeaders = headers
         mergedHeaders["Content-Length"] = "\(body.count)"

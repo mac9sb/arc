@@ -2,10 +2,6 @@
 
 Arc is a server management tool that provides a unified proxy for managing multiple static sites and dynamic applications.
 
-## TODO
-
-- [ ] Ensure that `sites.services` will actually run the binary with the various arguments.
-
 ## Overview
 
 Arc simplifies local development by providing:
