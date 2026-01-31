@@ -6,6 +6,7 @@ public enum ArcManifestLoader {
     ///
     /// - Parameter path: Path to `Arc.swift` or a directory containing it.
     /// - Returns: Loaded `ArcConfig` with `baseDir` inferred if missing.
+    /// - Throws: `ArcError` when the manifest path cannot be resolved or the manifest fails to compile or run.
     public static func load(from path: String) throws -> ArcConfig {
         let manifestPath = try resolveManifestPath(path)
         let manifestURL = URL(fileURLWithPath: manifestPath)
