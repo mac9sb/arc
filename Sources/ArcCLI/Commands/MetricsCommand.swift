@@ -29,8 +29,6 @@ public struct MetricsCommand: ParsableCommand {
         abstract: "Display metrics and health status"
     )
 
-
-
     /// Show health check status.
     @Flag(name: .long, help: "Show health check status for all sites")
     var health: Bool = false

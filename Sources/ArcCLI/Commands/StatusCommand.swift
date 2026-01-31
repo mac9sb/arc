@@ -4,7 +4,6 @@ import ArgumentParser
 import Foundation
 import Noora
 
-
 /// Thread-safe box for passing errors from async Tasks
 private final class ErrorBox: @unchecked Sendable {
     var error: Error?
@@ -41,8 +40,6 @@ public struct StatusCommand: ParsableCommand {
         commandName: "status",
         abstract: "Show arc server status"
     )
-
-
 
     /// Optional process name to inspect.
     ///

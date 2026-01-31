@@ -59,7 +59,7 @@ public struct HTTPResponse: Sendable, Equatable, Hashable {
     ///   - message: The error message to include in the response body.
     /// - Returns: An HTTPResponse configured as a plain text error.
     public static func error(status: Int, reason: String, message: String) -> HTTPResponse {
-        return HTTPResponse(
+        HTTPResponse(
             status: status,
             reason: reason,
             headers: ["Content-Type": "text/plain"],
@@ -72,7 +72,7 @@ public struct HTTPResponse: Sendable, Equatable, Hashable {
     /// - Parameter message: The error message to include in the response body.
     /// - Returns: An HTTPResponse configured as a 502 error.
     public static func badGateway(_ message: String) -> HTTPResponse {
-        return error(status: 502, reason: "Bad Gateway", message: message)
+        error(status: 502, reason: "Bad Gateway", message: message)
     }
 
     /// Creates a 404 Not Found error response.
@@ -80,7 +80,7 @@ public struct HTTPResponse: Sendable, Equatable, Hashable {
     /// - Parameter message: The error message to include in the response body.
     /// - Returns: An HTTPResponse configured as a 404 error.
     public static func notFound(_ message: String) -> HTTPResponse {
-        return error(status: 404, reason: "Not Found", message: message)
+        error(status: 404, reason: "Not Found", message: message)
     }
 
     /// Creates a 500 Internal Server Error response.
@@ -88,6 +88,6 @@ public struct HTTPResponse: Sendable, Equatable, Hashable {
     /// - Parameter message: The error message to include in the response body.
     /// - Returns: An HTTPResponse configured as a 500 error.
     public static func internalError(_ message: String) -> HTTPResponse {
-        return error(status: 500, reason: "Internal Server Error", message: message)
+        error(status: 500, reason: "Internal Server Error", message: message)
     }
 }

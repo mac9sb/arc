@@ -57,7 +57,7 @@ let config = ArcConfiguration(
             domain: "docs.example.com",
             outputPath: "static/docs/.output",
             watchTargets: ["static/docs/"]
-        )
+        ),
     ],
     extensions: [
         .cloudflare(

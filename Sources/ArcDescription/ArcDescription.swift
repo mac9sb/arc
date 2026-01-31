@@ -296,11 +296,12 @@ public enum ExtensionElement {
         tunnelName: String? = nil,
         tunnelUUID: String? = nil
     ) -> ExtensionElement {
-        .cloudflare(CloudflareConfig.cloudflare(
-            cloudflaredPath: cloudflaredPath,
-            tunnelName: tunnelName,
-            tunnelUUID: tunnelUUID
-        ))
+        .cloudflare(
+            CloudflareConfig.cloudflare(
+                cloudflaredPath: cloudflaredPath,
+                tunnelName: tunnelName,
+                tunnelUUID: tunnelUUID
+            ))
     }
 
     /// Creates an SSH extension element.
@@ -308,10 +309,11 @@ public enum ExtensionElement {
         domain: String,
         port: Int = 22
     ) -> ExtensionElement {
-        .ssh(SshConfig.ssh(
-            domain: domain,
-            port: port
-        ))
+        .ssh(
+            SshConfig.ssh(
+                domain: domain,
+                port: port
+            ))
     }
 }
 
@@ -423,14 +425,15 @@ public enum SiteElement {
         process: ProcessConfig,
         watchTargets: [String]? = nil
     ) -> SiteElement {
-        .service(ServiceSite.service(
-            name: name,
-            domain: domain,
-            port: port,
-            healthPath: healthPath,
-            process: process,
-            watchTargets: watchTargets
-        ))
+        .service(
+            ServiceSite.service(
+                name: name,
+                domain: domain,
+                port: port,
+                healthPath: healthPath,
+                process: process,
+                watchTargets: watchTargets
+            ))
     }
 
     /// Creates a static page site element.
@@ -440,12 +443,13 @@ public enum SiteElement {
         outputPath: String,
         watchTargets: [String]? = nil
     ) -> SiteElement {
-        .page(StaticSite.page(
-            name: name,
-            domain: domain,
-            outputPath: outputPath,
-            watchTargets: watchTargets
-        ))
+        .page(
+            StaticSite.page(
+                name: name,
+                domain: domain,
+                outputPath: outputPath,
+                watchTargets: watchTargets
+            ))
     }
 }
 

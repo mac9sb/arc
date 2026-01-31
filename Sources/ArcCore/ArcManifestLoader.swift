@@ -1,5 +1,5 @@
-import Foundation
 import ArcDescription
+import Foundation
 
 public enum ArcManifestLoader {
     /// Loads an `ArcConfiguration` from a Swift manifest file and converts it to `ArcConfig`.
@@ -52,19 +52,19 @@ public enum ArcManifestLoader {
 // MARK: - Runner Template
 
 private let runnerTemplate = """
-import Foundation
-import ArcDescription
+    import Foundation
+    import ArcDescription
 
-@main
-struct ArcManifestRunner {
-    static func main() throws {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.withoutEscapingSlashes]
-        let data = try encoder.encode(config)
-        FileHandle.standardOutput.write(data)
+    @main
+    struct ArcManifestRunner {
+        static func main() throws {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.withoutEscapingSlashes]
+            let data = try encoder.encode(config)
+            FileHandle.standardOutput.write(data)
+        }
     }
-}
-"""
+    """
 
 // MARK: - Process Execution
 
@@ -95,7 +95,7 @@ private func runSwift(
         "-lArcDescription",
         manifestPath,
         runnerPath,
-        "-o", executableURL.path
+        "-o", executableURL.path,
     ])
     compileTask.arguments = compileArgs
 
@@ -117,35 +117,35 @@ private func runSwift(
 
         if errorMessage.contains("import ArcDescription") || errorMessage.contains("No such module 'ArcDescription'") {
             helpfulMessage += """
-            Missing import or module not found.
+                Missing import or module not found.
 
-            Make sure your manifest starts with:
-              import ArcDescription
+                Make sure your manifest starts with:
+                  import ArcDescription
 
-            And that Arc is built:
-              cd tooling/arc && swift build -c release
-            """
+                And that Arc is built:
+                  cd tooling/arc && swift build -c release
+                """
         } else if errorMessage.contains("cannot find 'config' in scope") {
             helpfulMessage += """
-            Missing 'config' variable.
+                Missing 'config' variable.
 
-            Your manifest must define:
-              let config = ArcConfiguration(...)
+                Your manifest must define:
+                  let config = ArcConfiguration(...)
 
-            See Documentation.docc/Examples/ for examples.
-            """
+                See Documentation.docc/Examples/ for examples.
+                """
         } else if errorMessage.contains("precondition") || errorMessage.contains("failed") {
             helpfulMessage += """
-            Validation error in configuration.
+                Validation error in configuration.
 
-            Check that:
-              - Port numbers are in range 1025-65535
-              - Site names are unique and non-empty
-              - All required fields are provided
+                Check that:
+                  - Port numbers are in range 1025-65535
+                  - Site names are unique and non-empty
+                  - All required fields are provided
 
-            Error details:
-            \(errorMessage)
-            """
+                Error details:
+                \(errorMessage)
+                """
         } else {
             helpfulMessage += "Compilation error:\n\(errorMessage)"
         }

@@ -73,8 +73,6 @@ public struct StartCommand: ParsableCommand {
         abstract: "Start arc server"
     )
 
-
-
     /// Whether to run the server in background mode.
     ///
     /// When enabled, the server runs as a background process and returns control

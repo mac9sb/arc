@@ -27,8 +27,6 @@ public struct LogsCommand: ParsableCommand {
         abstract: "Show arc server logs"
     )
 
-
-
     /// Whether to follow log output in real-time.
     ///
     /// When enabled, continuously displays new log entries as they are written,

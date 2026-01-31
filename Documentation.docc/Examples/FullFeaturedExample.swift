@@ -1,8 +1,8 @@
 // Full-Featured ArcManifest.swift Example
 // This demonstrates all available configuration options in ArcDescription.
 
-import Foundation
 import ArcDescription
+import Foundation
 
 // Example: Use environment variables for dynamic configuration
 let isDevelopment = ProcessInfo.processInfo.environment["ENV"] == "development"
@@ -46,12 +46,12 @@ let config = ArcConfiguration(
                     "DATABASE_URL": "postgresql://\(dbHost):5432/api",
                     "REDIS_URL": "redis://\(dbHost):6379",
                     "LOG_LEVEL": isDevelopment ? "debug" : "info",
-                    "API_KEY": ProcessInfo.processInfo.environment["API_KEY"] ?? ""
+                    "API_KEY": ProcessInfo.processInfo.environment["API_KEY"] ?? "",
                 ]
             ),
             watchTargets: [
                 "apps/api-gateway/Sources/",
-                "apps/api-gateway/Package.swift"
+                "apps/api-gateway/Package.swift",
             ]
         ),
 
@@ -67,7 +67,7 @@ let config = ArcConfiguration(
                 args: ["run", "WorkerService"],
                 env: [
                     "QUEUE_URL": "redis://\(dbHost):6379/1",
-                    "WORKER_THREADS": "4"
+                    "WORKER_THREADS": "4",
                 ]
             )
         ),
@@ -91,7 +91,7 @@ let config = ArcConfiguration(
             outputPath: "static/marketing/.output",
             watchTargets: [
                 "static/marketing/Sources/",
-                "static/marketing/Package.swift"
+                "static/marketing/Package.swift",
             ]
         ),
 
@@ -107,7 +107,7 @@ let config = ArcConfiguration(
             name: "blog",
             domain: "blog.example.com",
             outputPath: "static/blog/.output"
-        )
+        ),
     ],
 
     // Extensions: Cloudflare Tunnel and SSH access
@@ -120,15 +120,15 @@ let config = ArcConfiguration(
         .ssh(
             domain: "ssh.example.com",
             port: 22
-        )
+        ),
     ],
 
     // File watching and hot-reload configuration
     watch: .init(
         enabled: true,
-        watchConfig: true,           // Watch this manifest for changes
-        followSymlinks: false,        // Don't follow symlinks (security)
-        debounceMs: 300,              // Wait 300ms after last change
-        cooldownMs: 1000              // Wait 1s after restart before accepting new changes
+        watchConfig: true,  // Watch this manifest for changes
+        followSymlinks: false,  // Don't follow symlinks (security)
+        debounceMs: 300,  // Wait 300ms after last change
+        cooldownMs: 1000  // Wait 1s after restart before accepting new changes
     )
 )

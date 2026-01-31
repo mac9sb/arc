@@ -11,7 +11,7 @@ enum HTTPParser {
         case malformedRequest(reason: String)
         case invalidRequestLine(line: String)
         case missingHeaders
-        
+
         var errorDescription: String? {
             switch self {
             case .invalidEncoding:
@@ -25,7 +25,7 @@ enum HTTPParser {
             }
         }
     }
-    
+
     /// Parses raw HTTP request data into an `HTTPRequest`.
     ///
     /// Parses the HTTP request line, headers, and body from raw bytes.
@@ -38,14 +38,14 @@ enum HTTPParser {
         guard let requestString = String(data: data, encoding: .utf8) else {
             throw ParseError.invalidEncoding
         }
-        
+
         guard let headerEndRange = requestString.range(of: "\r\n\r\n") else {
             throw ParseError.missingHeaders
         }
 
         let headerSection = String(requestString[..<headerEndRange.lowerBound])
         let lines = headerSection.components(separatedBy: "\r\n")
-        
+
         guard let requestLine = lines.first else {
             throw ParseError.malformedRequest(reason: "Empty request")
         }

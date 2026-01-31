@@ -1,7 +1,7 @@
 // Arc configuration model for Swift manifests.
 
-import Foundation
 import ArcDescription
+import Foundation
 
 // MARK: - ArcConfig
 

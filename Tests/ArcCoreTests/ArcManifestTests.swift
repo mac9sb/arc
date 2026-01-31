@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import ArcCore
 @testable import ArcDescription
 
@@ -11,10 +12,10 @@ struct ArcManifestTests {
     @Test("Load minimal valid manifest")
     func loadMinimalManifest() throws {
         let manifestContent = """
-        import ArcDescription
+            import ArcDescription
 
-        let config = ArcConfiguration()
-        """
+            let config = ArcConfiguration()
+            """
 
         let config = try loadManifestFromString(manifestContent)
         #expect(config.proxyPort == 8080)
@@ -25,21 +26,21 @@ struct ArcManifestTests {
     @Test("Load manifest with static site")
     func loadStaticSiteManifest() throws {
         let manifestContent = """
-        import ArcDescription
+            import ArcDescription
 
-        let config = ArcConfiguration(
-            sites: .init(
-                services: [],
-                pages: [
-                    .init(
-                        name: "portfolio",
-                        domain: "example.com",
-                        outputPath: "static/portfolio/.output"
-                    )
-                ]
+            let config = ArcConfiguration(
+                sites: .init(
+                    services: [],
+                    pages: [
+                        .init(
+                            name: "portfolio",
+                            domain: "example.com",
+                            outputPath: "static/portfolio/.output"
+                        )
+                    ]
+                )
             )
-        )
-        """
+            """
 
         let config = try loadManifestFromString(manifestContent)
         #expect(config.sites.pages.count == 1)
@@ -51,25 +52,25 @@ struct ArcManifestTests {
     @Test("Load manifest with service")
     func loadServiceManifest() throws {
         let manifestContent = """
-        import ArcDescription
+            import ArcDescription
 
-        let config = ArcConfiguration(
-            sites: .init(
-                services: [
-                    .init(
-                        name: "api",
-                        domain: "api.example.com",
-                        port: 8000,
-                        process: .init(
-                            workingDir: "apps/api/",
-                            executable: ".build/release/API"
+            let config = ArcConfiguration(
+                sites: .init(
+                    services: [
+                        .init(
+                            name: "api",
+                            domain: "api.example.com",
+                            port: 8000,
+                            process: .init(
+                                workingDir: "apps/api/",
+                                executable: ".build/release/API"
+                            )
                         )
-                    )
-                ],
-                pages: []
+                    ],
+                    pages: []
+                )
             )
-        )
-        """
+            """
 
         let config = try loadManifestFromString(manifestContent)
         #expect(config.sites.services.count == 1)
@@ -81,32 +82,32 @@ struct ArcManifestTests {
     @Test("Load manifest with multiple services and pages")
     func loadComplexManifest() throws {
         let manifestContent = """
-        import ArcDescription
+            import ArcDescription
 
-        let config = ArcConfiguration(
-            processName: "test-server",
-            sites: .init(
-                services: [
-                    .init(
-                        name: "api",
-                        domain: "api.example.com",
-                        port: 8000,
-                        process: .init(workingDir: "apps/api/", executable: ".build/release/API")
-                    ),
-                    .init(
-                        name: "admin",
-                        domain: "admin.example.com",
-                        port: 8001,
-                        process: .init(workingDir: "apps/admin/", executable: ".build/release/Admin")
-                    )
-                ],
-                pages: [
-                    .init(name: "marketing", domain: "example.com", outputPath: "static/marketing/.output"),
-                    .init(name: "docs", domain: "docs.example.com", outputPath: "static/docs/.output")
-                ]
+            let config = ArcConfiguration(
+                processName: "test-server",
+                sites: .init(
+                    services: [
+                        .init(
+                            name: "api",
+                            domain: "api.example.com",
+                            port: 8000,
+                            process: .init(workingDir: "apps/api/", executable: ".build/release/API")
+                        ),
+                        .init(
+                            name: "admin",
+                            domain: "admin.example.com",
+                            port: 8001,
+                            process: .init(workingDir: "apps/admin/", executable: ".build/release/Admin")
+                        )
+                    ],
+                    pages: [
+                        .init(name: "marketing", domain: "example.com", outputPath: "static/marketing/.output"),
+                        .init(name: "docs", domain: "docs.example.com", outputPath: "static/docs/.output")
+                    ]
+                )
             )
-        )
-        """
+            """
 
         let config = try loadManifestFromString(manifestContent)
         #expect(config.processName == "test-server")
@@ -117,17 +118,17 @@ struct ArcManifestTests {
     @Test("Load manifest with Cloudflare configuration")
     func loadCloudflareManifest() throws {
         let manifestContent = """
-        import ArcDescription
+            import ArcDescription
 
-        let config = ArcConfiguration(
-            extensions: [
-                .cloudflare(.cloudflare(
-                    tunnelName: "test-tunnel",
-                    tunnelUUID: "12345678-1234-1234-1234-123456789abc"
-                ))
-            ]
-        )
-        """
+            let config = ArcConfiguration(
+                extensions: [
+                    .cloudflare(.cloudflare(
+                        tunnelName: "test-tunnel",
+                        tunnelUUID: "12345678-1234-1234-1234-123456789abc"
+                    ))
+                ]
+            )
+            """
 
         let config = try loadManifestFromString(manifestContent)
         #expect(config.cloudflare != nil)
@@ -138,17 +139,17 @@ struct ArcManifestTests {
     @Test("Load manifest with SSH configuration")
     func loadSSHManifest() throws {
         let manifestContent = """
-        import ArcDescription
+            import ArcDescription
 
-        let config = ArcConfiguration(
-            extensions: [
-                .ssh(.ssh(
-                    domain: "ssh.example.com",
-                    port: 22
-                ))
-            ]
-        )
-        """
+            let config = ArcConfiguration(
+                extensions: [
+                    .ssh(.ssh(
+                        domain: "ssh.example.com",
+                        port: 22
+                    ))
+                ]
+            )
+            """
 
         let config = try loadManifestFromString(manifestContent)
         #expect(config.ssh != nil)
@@ -165,7 +166,7 @@ struct ArcManifestTests {
                 sites: .init(
                     services: [
                         .init(name: "api1", domain: "api1.local", port: 8000, process: .init(workingDir: ".", executable: "test")),
-                        .init(name: "api2", domain: "api2.local", port: 8000, process: .init(workingDir: ".", executable: "test"))
+                        .init(name: "api2", domain: "api2.local", port: 8000, process: .init(workingDir: ".", executable: "test")),
                     ]
                 )
             )
@@ -440,11 +441,11 @@ struct ArcManifestTests {
                 services: [
                     .init(name: "api", domain: "api.local", port: 8000, process: .init(workingDir: ".", executable: "test")),
                     .init(name: "admin", domain: "admin.local", port: 8001, process: .init(workingDir: ".", executable: "test")),
-                    .init(name: "worker", domain: "worker.local", port: 8002, process: .init(workingDir: ".", executable: "test"))
+                    .init(name: "worker", domain: "worker.local", port: 8002, process: .init(workingDir: ".", executable: "test")),
                 ],
                 pages: [
                     .init(name: "site1", domain: "site1.local", outputPath: "static1/.output"),
-                    .init(name: "site2", domain: "site2.local", outputPath: "static2/.output")
+                    .init(name: "site2", domain: "site2.local", outputPath: "static2/.output"),
                 ]
             )
         )
@@ -488,12 +489,12 @@ struct ArcManifestIntegrationTests {
         }
 
         let manifestContent = """
-        import ArcDescription
+            import ArcDescription
 
-        let config = ArcConfiguration(
-            processName: "directory-test"
-        )
-        """
+            let config = ArcConfiguration(
+                processName: "directory-test"
+            )
+            """
 
         let manifestPath = tempDir.appendingPathComponent("ArcManifest.swift")
         try manifestContent.write(to: manifestPath, atomically: true, encoding: .utf8)
@@ -514,10 +515,10 @@ struct ArcManifestIntegrationTests {
         }
 
         let manifestContent = """
-        import ArcDescription
+            import ArcDescription
 
-        let config = ArcConfiguration()
-        """
+            let config = ArcConfiguration()
+            """
 
         let manifestPath = tempDir.appendingPathComponent("ArcManifest.swift")
         try manifestContent.write(to: manifestPath, atomically: true, encoding: .utf8)

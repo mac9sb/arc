@@ -3,7 +3,6 @@ import ArgumentParser
 import Foundation
 import Noora
 
-
 /// Thread-safe box for passing errors from async Tasks
 private final class ErrorBox: @unchecked Sendable {
     var error: Error?
@@ -31,8 +30,6 @@ public struct DoctorCommand: ParsableCommand {
         commandName: "doctor",
         abstract: "Diagnose common issues with Arc setup"
     )
-
-
 
     /// Enable verbose output with additional details.
     @Flag(name: .shortAndLong, help: "Enable verbose output")
@@ -79,8 +76,6 @@ public struct DoctorCommand: ParsableCommand {
         } else if case .warning(let msg) = swiftCheck.status {
             warnings.append(Issue(category: "Swift", message: msg))
         }
-
-
 
         // Check config file
         print("Checking configuration...")
@@ -195,8 +190,6 @@ public struct DoctorCommand: ParsableCommand {
             )
         }
     }
-
-
 
     private static func checkConfig(configPath: String, verbose: Bool) async -> CheckResult {
         let expandedPath = (configPath as NSString).expandingTildeInPath

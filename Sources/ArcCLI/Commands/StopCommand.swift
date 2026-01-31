@@ -29,8 +29,6 @@ public struct StopCommand: ParsableCommand {
         abstract: "Stop arc server"
     )
 
-
-
     /// Optional process name to stop.
     ///
     /// If provided, stops only the specified process. If omitted and `all` is
