@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "Arc",
+    name: "arc",
     platforms: [
         .macOS(.v15)
     ],
