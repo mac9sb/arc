@@ -6,88 +6,30 @@ on:
       - "v*"
 
 jobs:
-  build:
-    name: Build Binary
-    runs-on: macos-15
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Swift
-        uses: swift-actions/setup-swift@v2
-        with:
-          swift-version: "6.2"
-
-      - name: Build
-        run: |
-          swift build -c release --arch arm64
-          mkdir -p release/arc
-          cp .build/release/arc release/arc/
-          cp -R .build/release/Arc_ArcCLI.bundle release/arc/
-          tar -czf arc-macos-aarch64.tar.gz -C release/arc arc Arc_ArcCLI.bundle
-          shasum -a 256 arc-macos-aarch64.tar.gz > arc-macos-aarch64.sha256
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: arc-macos-aarch64
-          path: |
-            arc-macos-aarch64.tar.gz
-            arc-macos-aarch64.sha256
-          retention-days: 1
-
-  create-release:
-    name: Create Release
-    needs: build
-    runs-on: ubuntu-latest
+  release:
+    uses: mac9sb/server/.github/workflows/project-release.yml@main
     permissions:
       contents: write
+    with:
+      tag_name: ${{ github.ref_name }}
+      release_title_prefix: Release
+      draft: false
+      generate_release_notes: false
+      release_body_intro: Arc CLI binary for macOS (arm64).
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Generate Changelog
-        run: |
-          TAG="${{ github.ref_name }}"
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-
-          echo "## What's Changed in $TAG" > CHANGELOG.md
-          echo "" >> CHANGELOG.md
-
-          if [ -z "$PREV_TAG" ]; then
-            echo "Initial release" >> CHANGELOG.md
-            echo "" >> CHANGELOG.md
-            git log --pretty=format:"- %s (%h)" >> CHANGELOG.md
-          else
-            echo "Changes since $PREV_TAG:" >> CHANGELOG.md
-            echo "" >> CHANGELOG.md
-            git log --pretty=format:"- %s (%h)" ${PREV_TAG}..HEAD >> CHANGELOG.md
-          fi
-
-          echo "" >> CHANGELOG.md
-          echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${TAG}" >> CHANGELOG.md
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
-          body_path: CHANGELOG.md
-          files: |
-            artifacts/*/arc-macos-aarch64.tar.gz
-            artifacts/*/arc-macos-aarch64.sha256
-          draft: false
-          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      build_enabled: true
+      build_runner: macos-15
+      swift_version: "6.2"
+      build_command: |
+        swift build -c release --arch arm64
+        mkdir -p release/arc
+        cp .build/release/arc release/arc/
+        cp -R .build/release/Arc_ArcCLI.bundle release/arc/
+        tar -czf arc-macos-aarch64.tar.gz -C release/arc arc Arc_ArcCLI.bundle
+        shasum -a 256 arc-macos-aarch64.tar.gz > arc-macos-aarch64.sha256
+      artifact_name: arc-macos-aarch64
+      artifact_path: |
+        arc-macos-aarch64.tar.gz
+        arc-macos-aarch64.sha256
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

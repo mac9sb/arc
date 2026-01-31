@@ -1,0 +1,97 @@
+# Create an App Workflow
+
+Learn how to define an app in `apps/`, capture product intent, and promote it into a runnable service or static site.
+
+@Tutorial(time: 10) {
+    @Intro(title: "Create an App Workflow") {
+        This tutorial explains how to start a new app in `apps/`, document requirements, and graduate it into a server service or static site when it’s ready to run.
+    }
+
+    @Section(title: "Decide the App Type") {
+        @ContentAndMedia {
+            Apps in `apps/` are pre-implementation artifacts. They can represent:
+
+            - Product concepts
+            - Design drafts
+            - Architecture notes
+            - Requirements and scope
+
+            When an app is ready to run, move it into `sites/` as either a static site or a service.
+        }
+    }
+
+    @Section(title: "Create the App Folder") {
+        @ContentAndMedia {
+            Create a new folder under `apps/`:
+
+            apps/my-app/
+            ├── PRD.md
+            ├── Notes.md
+            └── Architecture.md
+
+            Keep documents small and focused. Use one file per concern.
+        }
+    }
+
+    @Section(title: "Write the PRD") {
+        @ContentAndMedia {
+            Your PRD should answer:
+
+            - What problem does the app solve?
+            - Who is the user?
+            - What are the primary workflows?
+            - What does “done” look like?
+
+            Keep goals measurable and avoid implementation details here.
+        }
+    }
+
+    @Section(title: "Capture Architecture") {
+        @ContentAndMedia {
+            Use `Architecture.md` to outline:
+
+            - Data models
+            - Integrations (APIs, databases)
+            - Runtime expectations (server vs static)
+            - Deployment targets
+
+            This helps you choose the right path in `sites/`.
+        }
+    }
+
+    @Section(title: "Promote to a Static Site") {
+        @ContentAndMedia {
+            Choose this when the app is mostly content or can be generated at build time.
+
+            - Create `sites/<app-name>/` with a static site generator.
+            - Register it in `Arc.swift` using `.page(...)`.
+            - Generate `.output` and let Arc serve it.
+
+            See <doc:CreateStaticSite>.
+        }
+    }
+
+    @Section(title: "Promote to a Service") {
+        @ContentAndMedia {
+            Choose this when the app needs a server runtime.
+
+            - Create `sites/<app-name>/Web/`.
+            - Build a Hummingbird service.
+            - Register it in `Arc.swift` using `.service(...)`.
+
+            See <doc:CreateService>.
+        }
+    }
+
+    @Section(title: "Best Practices") {
+        @ContentAndMedia {
+            - Keep `apps/` clean and lightweight.
+            - Move runnable code into `sites/` as soon as it exists.
+            - Keep `Arc.swift` as the single source of runtime truth.
+            - Follow the Swift API Design Guidelines.
+
+            External reference:
+            https://www.swift.org/documentation/api-design-guidelines/
+        }
+    }
+}

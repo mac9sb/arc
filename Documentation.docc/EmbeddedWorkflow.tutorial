@@ -1,0 +1,93 @@
+# Embedded Workflow
+
+Learn how to structure embedded projects in `embedded/`, document hardware setup, and build with Embedded Swift.
+
+@Tutorial(time: 12) {
+    @Intro(title: "Embedded Workflow") {
+        This tutorial explains how embedded projects are organized in the monorepo and how to document, build, and iterate on them using the Embedded Swift toolchain.
+    }
+
+    @Section(title: "Decide on Structure") {
+        @ContentAndMedia {
+            Embedded projects live under `embedded/<project-name>/` and should be self-contained.
+
+            Example structure:
+
+            embedded/my-device/
+            ├── Package.swift
+            ├── Sources/
+            ├── README.md
+            ├── LICENSE
+            └── .gitignore
+        }
+    }
+
+    @Section(title: "Create the Package") {
+        @ContentAndMedia {
+            Create a Swift package configured for your target board and toolchain.
+
+            Your `Package.swift` should specify:
+            - target platform and toolchain constraints
+            - any embedded dependencies
+            - an executable target for the firmware entry point
+
+            Keep build logic in the package, not in scripts, when possible.
+        }
+    }
+
+    @Section(title: "Document Hardware") {
+        @ContentAndMedia {
+            Add a `README.md` that describes:
+            - required hardware (parts list)
+            - pin mappings
+            - wiring diagrams
+            - power requirements
+
+            Include setup steps for flashing and any required external tools.
+        }
+    }
+
+    @Section(title: "Configure Secrets and Environment") {
+        @ContentAndMedia {
+            If the firmware requires credentials (Wi-Fi, broker URLs), document them clearly.
+
+            Use an `.env` file (or equivalent) for local development and avoid committing secrets.
+        }
+    }
+
+    @Section(title: "Build and Flash") {
+        @ContentAndMedia {
+            Build and flash using the Embedded Swift toolchain and your target’s recommended tooling.
+
+            Keep commands in the `README.md` so new contributors can replicate the process quickly.
+
+            Example flow:
+            1. build firmware
+            2. flash to device
+            3. verify on hardware
+        }
+    }
+
+    @Section(title: "Iterate Safely") {
+        @ContentAndMedia {
+            When iterating:
+            - keep changes small
+            - validate power and pin configurations
+            - test BLE/Wi-Fi connectivity separately from UI rendering
+
+            Document any hardware quirks or known issues in the project README.
+        }
+    }
+
+    @Section(title: "Best Practices") {
+        @ContentAndMedia {
+            - Keep embedded projects self-contained under `embedded/`.
+            - Prefer clear README instructions over custom scripts.
+            - Separate device concerns into modules (drivers, UI, network).
+            - Follow the Swift API Design Guidelines for any reusable APIs.
+
+            External reference:
+            https://www.swift.org/documentation/api-design-guidelines/
+        }
+    }
+}

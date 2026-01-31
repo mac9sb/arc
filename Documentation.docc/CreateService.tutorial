@@ -1,0 +1,150 @@
+# Create a Service
+
+Learn how to create a new server service in `sites/`, build it, and register it with Arc.
+
+@Tutorial(time: 14) {
+    @Intro(title: "Create a Service") {
+        This tutorial shows how to scaffold a Hummingbird service, build a release binary, and register it in `Arc.swift` so Arc can run it locally.
+    }
+
+    @Section(title: "Decide on Structure") {
+        @ContentAndMedia {
+            Services live under `sites/<service-name>/Web/` and expose an executable target.
+
+            Example structure:
+
+````text
+sites/my-service/
+└── Web/
+    ├── Package.swift
+    ├── Sources/
+    │   └── Web/
+    └── Tests/
+````
+        }
+    }
+
+    @Section(title: "Create the Package") {
+        @ContentAndMedia {
+            Create a Swift package with an executable target that starts your Hummingbird server.
+
+            Example `Package.swift` layout:
+
+````swift
+// swift-tools-version: 6.2
+import PackageDescription
+
+let package = Package(
+    name: "Web",
+    platforms: [
+        .macOS(.v15),
+    ],
+    products: [
+        .executable(name: "MyServiceWeb", targets: ["MyServiceWeb"])
+    ],
+    dependencies: [
+        .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.0.0"),
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.5.0"),
+    ],
+    targets: [
+        .executableTarget(
+            name: "MyServiceWeb",
+            dependencies: [
+                .product(name: "Hummingbird", package: "hummingbird"),
+                .product(name: "Logging", package: "swift-log"),
+            ],
+            path: "Sources/Web"
+        ),
+        .testTarget(
+            name: "WebTests",
+            dependencies: [
+                "MyServiceWeb",
+            ],
+            path: "Tests/WebTests"
+        ),
+    ]
+)
+````
+        }
+    }
+
+    @Section(title: "Implement the Server") {
+        @ContentAndMedia {
+            Create an entry point in `Sources/Web/` that starts a Hummingbird `Application` and binds to the port Arc will assign.
+
+            Keep configuration (ports, domains) in `Arc.swift`, not in code.
+
+            If you need environment variables, document them in `README.md` for the service.
+        }
+    }
+
+    @Section(title: "Build the Service") {
+        @ContentAndMedia {
+            Build a release binary so Arc can run it.
+
+````sh
+cd sites/my-service/Web
+swift build -c release
+````
+
+            The binary path should match your `Package.swift` target name.
+        }
+    }
+
+    @Section(title: "Register with Arc") {
+        @ContentAndMedia {
+            Add a `.service` entry in `Arc.swift`:
+
+````swift
+.service(
+    name: "my-service",
+    domain: "my-service.localhost",
+    port: 8100,
+    process: .process(
+        workingDir: "sites/my-service/Web/",
+        executable: ".build/arm64-apple-macosx/release/MyServiceWeb"
+    )
+)
+````
+
+            This tells Arc where to run the binary and which domain to route.
+        }
+    }
+
+    @Section(title: "Run Locally") {
+        @ContentAndMedia {
+            Start Arc from the repo root:
+
+````sh
+arc run
+````
+
+            Visit `http://my-service.localhost` to verify the service responds.
+        }
+    }
+
+    @Section(title: "Iterate") {
+        @ContentAndMedia {
+            Update your service code, then rebuild:
+
+````sh
+cd sites/my-service/Web
+swift build -c release
+````
+
+            Arc will detect the new binary and restart the service automatically.
+        }
+    }
+
+    @Section(title: "Best Practices") {
+        @ContentAndMedia {
+            - Keep ports and domains centralized in `Arc.swift`.
+            - Use `swift-log` for structured logging.
+            - Follow Swift API Design Guidelines.
+            - Write integration tests using Hummingbird testing helpers when applicable.
+
+            External reference:
+            https://www.swift.org/documentation/api-design-guidelines/
+        }
+    }
+}

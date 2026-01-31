@@ -1,0 +1,114 @@
+# Run the Server Locally
+
+Learn how to build dependencies, configure Arc, and run the local server workflow.
+
+@Tutorial(time: 12) {
+    @Intro(title: "Run the Server Locally") {
+        This tutorial walks you through building the required tooling, starting Arc, and verifying that static sites and services are running correctly.
+    }
+
+    @Section(title: "Prerequisites") {
+        @ContentAndMedia {
+            Make sure you have the Swift toolchain installed and the repo cloned with submodules initialized.
+
+````sh
+git submodule update --init --recursive
+swift --version
+````
+        }
+    }
+
+    @Section(title: "Build Required Tooling") {
+        @ContentAndMedia {
+            Arc and WebUI live in `tooling/`. Build them once before running the server.
+
+````sh
+cd tooling/arc && swift build -c release
+cd ../web-ui && swift build -c release
+````
+        }
+    }
+
+    @Section(title: "Configure Arc") {
+        @ContentAndMedia {
+            Arc reads configuration from `Arc.swift` at the repo root. Ensure your sites and services are listed with proper domains, ports, and paths.
+
+            Example structure for a static page:
+
+````swift
+.page(
+    name: "portfolio",
+    domain: "portfolio.localhost",
+    outputPath: "sites/portfolio/.output"
+)
+````
+
+            Example structure for a service:
+
+````swift
+.service(
+    name: "guest-list",
+    domain: "guest-list.localhost",
+    port: 8000,
+    process: .process(
+        workingDir: "sites/guest-list/Web/",
+        executable: ".build/arm64-apple-macosx/release/GuestListWeb"
+    )
+)
+````
+        }
+    }
+
+    @Section(title: "Build Projects") {
+        @ContentAndMedia {
+            Build service binaries and generate static sites.
+
+            Build a service:
+
+````sh
+cd sites/guest-list/Web
+swift build -c release
+````
+
+            Generate a static site:
+
+````sh
+cd sites/portfolio
+swift run
+````
+        }
+    }
+
+    @Section(title: "Run Arc") {
+        @ContentAndMedia {
+            Start the server from the repo root.
+
+````sh
+arc run
+````
+
+            If `arc` is not on your PATH, run the binary directly or add it to PATH. Use the path that matches your machine’s architecture:
+
+````sh
+./tooling/arc/.build/arm64-apple-macosx/release/arc
+./tooling/arc/.build/x86_64-apple-macosx/release/arc
+````
+
+            Use these commands as needed:
+
+            - `arc run --background`
+            - `arc status`
+            - `arc logs`
+            - `arc stop`
+        }
+    }
+
+    @Section(title: "Verify Locally") {
+        @ContentAndMedia {
+            After Arc starts, open the configured domains in your browser. Static sites should resolve immediately, and services should respond once their binaries are running.
+
+            If you change configuration in `Arc.swift`, Arc reloads automatically.
+            If you rebuild a service binary or regenerate a static site, Arc updates automatically.
+        }
+    }
+}

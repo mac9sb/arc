@@ -1,0 +1,119 @@
+# Create a Static Site
+
+Learn how to create a new static site in `sites/`, generate output, and serve it with Arc.
+
+@Tutorial(time: 12) {
+    @Intro(title: "Create a Static Site") {
+        This tutorial shows how to scaffold a static site package, generate `.output`, and register it in `Arc.swift` so Arc can serve it locally.
+    }
+
+    @Section(title: "Decide on Structure") {
+        @ContentAndMedia {
+            Static sites live under `sites/<site-name>/` and generate output into `.output`.
+
+            Example structure:
+
+````text
+sites/my-site/
+├── Package.swift
+├── Sources/
+│   └── MySite/
+└── .output/
+````
+        }
+    }
+
+    @Section(title: "Create the Package") {
+        @ContentAndMedia {
+            Create a new Swift package with an executable target that writes HTML into `.output`.
+
+            If you are using WebUI, add it as a dependency and generate HTML in your executable.
+
+            Example `Package.swift` layout:
+
+````swift
+// swift-tools-version: 6.2
+import PackageDescription
+
+let package = Package(
+    name: "MySite",
+    platforms: [
+        .macOS(.v15),
+    ],
+    dependencies: [
+        .package(path: "../../tooling/web-ui"),
+    ],
+    targets: [
+        .executableTarget(
+            name: "MySite",
+            dependencies: [
+                .product(name: "WebUI", package: "web-ui"),
+            ]
+        ),
+    ]
+)
+````
+        }
+    }
+
+    @Section(title: "Generate Output") {
+        @ContentAndMedia {
+            The executable should write generated files into `.output`. Once the generator is ready, run:
+
+````sh
+cd sites/my-site
+swift run
+````
+
+            After generation, you should see files under `sites/my-site/.output/`.
+        }
+    }
+
+    @Section(title: "Register with Arc") {
+        @ContentAndMedia {
+            Add a `.page` entry in `Arc.swift`:
+
+````swift
+.page(
+    name: "my-site",
+    domain: "my-site.localhost",
+    outputPath: "sites/my-site/.output"
+)
+````
+
+            This tells Arc where your generated files live and which domain to route.
+        }
+    }
+
+    @Section(title: "Serve Locally") {
+        @ContentAndMedia {
+            Start Arc from the repo root:
+
+````sh
+arc run
+````
+
+            Visit `http://my-site.localhost` to verify the output.
+        }
+    }
+
+    @Section(title: "Iterate") {
+        @ContentAndMedia {
+            Update your content under `Sources/`, then re-run `swift run` to regenerate `.output`.
+
+            Arc will detect changes in `.output` and re-serve immediately.
+        }
+    }
+
+    @Section(title: "Best Practices") {
+        @ContentAndMedia {
+            - Keep generated assets inside `.output`.
+            - Keep source content under `Sources/`.
+            - Prefer type-safe HTML generation with WebUI.
+            - Follow the Swift API Design Guidelines.
+
+            External reference:
+            https://www.swift.org/documentation/api-design-guidelines/
+        }
+    }
+}

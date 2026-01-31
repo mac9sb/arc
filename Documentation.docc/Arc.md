@@ -58,6 +58,12 @@ Arc consists of several modules:
 - <doc:GettingStarted>
 - <doc:Configuration>
 - <doc:Examples>
+- <doc:ServerWorkflow>
+- <doc:RunServerLocally>
+- <doc:CreateStaticSite>
+- <doc:CreateService>
+- <doc:CreateApp>
+- <doc:EmbeddedWorkflow>
 
 
 
