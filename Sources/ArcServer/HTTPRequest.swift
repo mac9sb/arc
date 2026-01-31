@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Contains the parsed components of an HTTP request including method, path,
 /// headers, and body data.
-public struct HTTPRequest: Sendable {
+public struct HTTPRequest: Sendable, Equatable, Hashable {
     /// The HTTP method (e.g., "GET", "POST", "PUT", "DELETE").
     public let method: String
 

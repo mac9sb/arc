@@ -91,13 +91,18 @@ public struct StatusCommand: ParsableCommand {
 
                 // Load config to get baseDir (same logic as StartCommand)
                 let configURL = URL(fileURLWithPath: resolvedPath)
-                guard
-                    let config = try? await ArcConfig.loadFrom(
+                let config: ArcConfig
+                do {
+                    config = try await ArcConfig.loadFrom(
                         source: ModuleSource.path(resolvedPath),
                         configPath: configURL
                     )
-                else {
+                } catch {
                     // Fallback to config file directory if config can't be loaded
+                    if isVerbose {
+                        Noora().warning("Failed to load config from \(resolvedPath): \(error)")
+                        Noora().info("Using fallback: .pid directory from config location")
+                    }
                     let baseDir = configURL.deletingLastPathComponent().path
                     let pidDir = URL(fileURLWithPath: "\(baseDir)/.pid")
                     let manager = ProcessDescriptorManager(baseDir: pidDir)
@@ -149,10 +154,24 @@ public struct StatusCommand: ParsableCommand {
         // Function to build table data
         func buildTableData() async -> TableData {
             // Clean up stale descriptors first
-            _ = try? await manager.cleanupStale()
+            do {
+                _ = try await manager.cleanupStale()
+            } catch {
+                if verbose {
+                    Noora().warning("Failed to cleanup stale descriptors: \(error)")
+                }
+            }
 
             // Get active descriptors
-            let activeDescriptors = (try? await manager.listAll()) ?? []
+            let activeDescriptors: [ProcessDescriptor]
+            do {
+                activeDescriptors = try await manager.listAll()
+            } catch {
+                if verbose {
+                    Noora().error("Failed to list processes: \(error)")
+                }
+                activeDescriptors = []
+            }
 
             if activeDescriptors.isEmpty {
                 // Return empty table
@@ -252,13 +271,14 @@ public struct StatusCommand: ParsableCommand {
 
         // Load config
         let configURL = URL(fileURLWithPath: descriptor.configPath)
-        guard
-            let config = try? await ArcConfig.loadFrom(
+        let config: ArcConfig
+        do {
+            config = try await ArcConfig.loadFrom(
                 source: ModuleSource.path(descriptor.configPath),
                 configPath: configURL
             )
-        else {
-            Noora().error("Failed to load configuration from \(descriptor.configPath)")
+        } catch {
+            Noora().error("Failed to load configuration from \(descriptor.configPath): \(error)")
             return
         }
 

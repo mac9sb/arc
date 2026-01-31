@@ -41,22 +41,12 @@ public struct StaticFileHandler {
             return directoryListing(at: fullPath, requestPath: sanitizedPath)
         }
 
-        return HTTPResponse(
-            status: 404,
-            reason: "Not Found",
-            headers: ["Content-Type": "text/plain"],
-            body: Data("Not Found".utf8)
-        )
+        return .notFound("Not Found")
     }
 
     private func serveFile(at path: String) -> HTTPResponse {
         guard let data = FileManager.default.contents(atPath: path) else {
-            return HTTPResponse(
-                status: 500,
-                reason: "Server Error",
-                headers: ["Content-Type": "text/plain"],
-                body: Data("Failed to read file".utf8)
-            )
+            return .internalError("Failed to read file")
         }
 
         let mimeType = mimeTypeFor(path: path)

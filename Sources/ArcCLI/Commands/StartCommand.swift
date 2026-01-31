@@ -261,7 +261,13 @@ public struct StartCommand: ParsableCommand {
         server.stop()
         await sharedState.stopCloudflared()
         await sharedState.stopAll()
-        try? await manager.delete(name: descriptor.name)
+        do {
+            try await manager.delete(name: descriptor.name)
+        } catch {
+            if verbose {
+                Noora().warning("Failed to delete process descriptor during cleanup: \(error)")
+            }
+        }
         if verbose {
             Noora().info("Cleanup complete")
         }
@@ -559,7 +565,11 @@ public struct StartCommand: ParsableCommand {
         server.stop()
         await sharedState.stopCloudflared()
         await sharedState.stopAll()
-        try? await manager.delete(name: descriptor.name)
+        do {
+            try await manager.delete(name: descriptor.name)
+        } catch {
+            // Silent during background cleanup - descriptor may not exist
+        }
         shutdownSemaphore?.signal()
     }
 

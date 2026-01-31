@@ -135,11 +135,14 @@ public class ServerProcessManager {
             }
         }
 
-        guard let outputHandle = try? FileHandle(forWritingTo: logFileURL),
-            let errorHandle = try? FileHandle(forWritingTo: logFileURL)
-        else {
+        let outputHandle: FileHandle
+        let errorHandle: FileHandle
+        do {
+            outputHandle = try FileHandle(forWritingTo: logFileURL)
+            errorHandle = try FileHandle(forWritingTo: logFileURL)
+        } catch {
             throw ArcError.invalidConfiguration(
-                "Failed to open log file at \(logPath) for writing. Ensure the file is writable.")
+                "Failed to open log file at \(logPath) for writing: \(error.localizedDescription)")
         }
 
         task.standardOutput = outputHandle

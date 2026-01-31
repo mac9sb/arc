@@ -6,43 +6,13 @@ import ArcDescription
 // MARK: - ArcConfig
 
 /// Arc configuration for local development, backed by `ArcDescription`.
+///
+/// This type wraps `ArcConfiguration` and provides a more ergonomic Swift API.
+/// Simple properties are forwarded via `@dynamicMemberLookup`, while complex
+/// properties like `sites`, `cloudflare`, and `ssh` provide custom transformation logic.
+@dynamicMemberLookup
 public struct ArcConfig: Hashable, Sendable {
     public var configuration: ArcConfiguration
-
-    public var proxyPort: Int {
-        get { configuration.proxyPort }
-        set { configuration.proxyPort = newValue }
-    }
-
-    public var logDir: String {
-        get { configuration.logDir }
-        set { configuration.logDir = newValue }
-    }
-
-    public var baseDir: String? {
-        get { configuration.baseDir }
-        set { configuration.baseDir = newValue }
-    }
-
-    public var healthCheckInterval: Int {
-        get { configuration.healthCheckInterval }
-        set { configuration.healthCheckInterval = newValue }
-    }
-
-    public var version: String {
-        get { configuration.version }
-        set { configuration.version = newValue }
-    }
-
-    public var region: String? {
-        get { configuration.region }
-        set { configuration.region = newValue }
-    }
-
-    public var processName: String? {
-        get { configuration.processName }
-        set { configuration.processName = newValue }
-    }
 
     /// Unified list of sites (static pages and services).
     public var sites: [Site] {
@@ -73,9 +43,14 @@ public struct ArcConfig: Hashable, Sendable {
         set { configuration.ssh = newValue }
     }
 
-    public var watch: WatchConfig {
-        get { configuration.watch }
-        set { configuration.watch = newValue }
+    /// Forwards read/write access to simple properties on the underlying configuration.
+    ///
+    /// This subscript allows direct access to properties like `proxyPort`, `logDir`,
+    /// `baseDir`, `healthCheckInterval`, `version`, `region`, `processName`, and `watch`
+    /// without needing explicit pass-through computed properties.
+    public subscript<T>(dynamicMember keyPath: WritableKeyPath<ArcConfiguration, T>) -> T {
+        get { configuration[keyPath: keyPath] }
+        set { configuration[keyPath: keyPath] = newValue }
     }
 
     public init(

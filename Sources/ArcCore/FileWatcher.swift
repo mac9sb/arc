@@ -6,9 +6,29 @@ import Foundation
 /// Use `FileWatcher` to watch files and directories for changes, with configurable
 /// debouncing to prevent excessive callbacks during rapid file modifications.
 ///
-/// Thread safety: All mutable state access is serialized through the `queue` DispatchQueue.
-/// Uses @unchecked Sendable to satisfy concurrency requirements while ensuring thread safety
-/// via the serial dispatch queue.
+/// ## Thread Safety
+///
+/// This class uses `@unchecked Sendable` because it contains mutable state that cannot
+/// be automatically verified as thread-safe by the compiler. However, thread safety is
+/// guaranteed through the following design:
+///
+/// 1. **Serial Queue Protection**: All mutable state (`dispatchSources`, `debounceTimers`,
+///    `lastTriggerTime`, `isRunning`) is accessed exclusively through the serial
+///    `queue` DispatchQueue, which provides mutual exclusion.
+///
+/// 2. **Immutable Configuration**: The `targets`, `debounceConfig`, and `followSymlinks`
+///    properties are immutable after initialization.
+///
+/// 3. **Sendable Callbacks**: All file change callbacks are marked `@Sendable`, ensuring
+///    they can be safely called from the serial queue.
+///
+/// 4. **Dispatch Source Lifecycle**: DispatchSourceFileSystemObject instances are created,
+///    stored, and cancelled only within the serial queue context.
+///
+/// **Why @unchecked is safe here**: The compiler cannot verify that all access to mutable
+/// properties goes through the serial queue, but our implementation ensures this through
+/// careful design. All public methods (`start()`, `stop()`) and all private methods
+/// (`setupWatchers()`, `handleEvent()`, `cleanup()`) execute on or dispatch to `queue`.
 public final class FileWatcher: @unchecked Sendable {
     /// Configuration for a single watch target.
     public struct WatchTarget {

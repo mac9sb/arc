@@ -38,22 +38,12 @@ public final class ProxyHandler: @unchecked Sendable {
 
     func handle(request: HTTPRequest, appSite: AppSite) async -> HTTPResponse {
         guard let baseURL = appSite.baseURL() else {
-            return HTTPResponse(
-                status: 502,
-                reason: "Bad Gateway",
-                headers: ["Content-Type": "text/plain"],
-                body: Data("Invalid upstream".utf8)
-            )
+            return .badGateway("Invalid upstream")
         }
 
         let url = URL(string: request.path, relativeTo: baseURL) ?? baseURL
         guard let host = url.host else {
-            return HTTPResponse(
-                status: 502,
-                reason: "Bad Gateway",
-                headers: ["Content-Type": "text/plain"],
-                body: Data("Invalid upstream URL".utf8)
-            )
+            return .badGateway("Invalid upstream URL")
         }
 
         let port = url.port ?? (url.scheme == "https" ? 443 : 80)
@@ -71,12 +61,7 @@ public final class ProxyHandler: @unchecked Sendable {
             )
         } catch {
             Noora().error("Proxy error for \(appSite.name): \(error.localizedDescription)")
-            return HTTPResponse(
-                status: 502,
-                reason: "Bad Gateway",
-                headers: ["Content-Type": "text/plain"],
-                body: Data("Upstream unavailable".utf8)
-            )
+            return .badGateway("Upstream unavailable")
         }
     }
 
