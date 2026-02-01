@@ -37,7 +37,7 @@ public struct ArcConfig: Hashable, Sendable {
         get { configuration.extensions?.cloudflare }
         set {
             if configuration.extensions == nil {
-                configuration.extensions = Extensions()
+                configuration.extensions = Extensions(cloudflare: nil, ssh: nil)
             }
             configuration.extensions?.cloudflare = newValue
         }
@@ -47,7 +47,7 @@ public struct ArcConfig: Hashable, Sendable {
         get { configuration.extensions?.ssh }
         set {
             if configuration.extensions == nil {
-                configuration.extensions = Extensions()
+                configuration.extensions = Extensions(cloudflare: nil, ssh: nil)
             }
             configuration.extensions?.ssh = newValue
         }
