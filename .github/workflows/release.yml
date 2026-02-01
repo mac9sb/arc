@@ -32,4 +32,4 @@ jobs:
         arc-macos-aarch64.tar.gz
         arc-macos-aarch64.sha256
     secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
