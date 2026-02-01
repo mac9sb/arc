@@ -5,11 +5,18 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
   release:
     uses: mac9sb/server/.github/workflows/project-release.yml@main
     permissions:
       contents: write
+      pages: write
+      id-token: write
     with:
       tag_name: ${{ github.ref_name }}
       release_title_prefix: Release
