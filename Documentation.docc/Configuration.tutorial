@@ -90,10 +90,11 @@ Learn how to configure Arc using a Swift manifest.
             import ArcDescription
 
             let config = ArcConfiguration(
-                cloudflare: .init(
-                    enabled: true,
-                    tunnelName: "your-tunnel-name",
-                    tunnelUUID: nil
+                extensions: .init(
+                    cloudflare: .cloudflare(
+                        tunnelName: "your-tunnel-name",
+                        tunnelUUID: nil
+                    )
                 )
             )
             ```

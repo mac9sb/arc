@@ -34,13 +34,23 @@ public struct ArcConfig: Hashable, Sendable {
     }
 
     public var cloudflare: CloudflareTunnel? {
-        get { configuration.cloudflare }
-        set { configuration.cloudflare = newValue }
+        get { configuration.extensions?.cloudflare }
+        set {
+            if configuration.extensions == nil {
+                configuration.extensions = Extensions()
+            }
+            configuration.extensions?.cloudflare = newValue
+        }
     }
 
     public var ssh: SshConfig? {
-        get { configuration.ssh }
-        set { configuration.ssh = newValue }
+        get { configuration.extensions?.ssh }
+        set {
+            if configuration.extensions == nil {
+                configuration.extensions = Extensions()
+            }
+            configuration.extensions?.ssh = newValue
+        }
     }
 
     /// Forwards read/write access to simple properties on the underlying configuration.

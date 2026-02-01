@@ -112,8 +112,7 @@ import ArcDescription
 let config = ArcConfiguration(
     processName: String?,              // Optional process identifier
     sites: Sites,                      // Site configurations
-    cloudflare: CloudflareConfig?,     // Cloudflare Tunnel config
-    ssh: SshConfig?,                   // SSH access config
+    extensions: Extensions?,           // Optional integrations (Cloudflare, SSH, etc.)
     watch: WatchConfig,                // File watching config
     // ... and more
 )

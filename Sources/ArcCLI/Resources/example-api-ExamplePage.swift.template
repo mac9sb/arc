@@ -22,9 +22,7 @@ struct ExamplePage: Document {
                         "Message:"
                     }
                     Input(name: "message", type: .text, required: true, placeholder: "Enter your message")
-                    Button(type: .submit) {
-                        "Send Message"
-                    }
+                    Button("Send Message", type: .submit)
                 }
             }
         }

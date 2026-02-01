@@ -47,8 +47,7 @@ import Foundation
 ///
 /// ### Optional Features
 ///
-/// - ``cloudflare``
-/// - ``ssh``
+/// - ``extensions``
 /// - ``watch``
 ///
 /// ## See Also
@@ -137,33 +136,9 @@ public struct ArcConfiguration: Codable, Sendable, Hashable {
     /// - ``WatchConfig``
     public var watch: WatchConfig
 
-    /// Cloudflare Tunnel configuration.
-    ///
-    /// **Deprecated**: Use `extensions.cloudflare` instead.
-    @available(*, deprecated, renamed: "extensions.cloudflare")
-    public var cloudflare: CloudflareConfig? {
-        get { extensions?.cloudflare }
-        set {
-            if extensions == nil {
-                extensions = Extensions(cloudflare: nil, ssh: nil)
-            }
-            extensions?.cloudflare = newValue
-        }
-    }
 
-    /// SSH configuration.
-    ///
-    /// **Deprecated**: Use `extensions.ssh` instead.
-    @available(*, deprecated, renamed: "extensions.ssh")
-    public var ssh: SshConfig? {
-        get { extensions?.ssh }
-        set {
-            if extensions == nil {
-                extensions = Extensions(cloudflare: nil, ssh: nil)
-            }
-            extensions?.ssh = newValue
-        }
-    }
+
+
 
     public init(
         proxyPort: Int = 8080,
@@ -175,9 +150,7 @@ public struct ArcConfiguration: Codable, Sendable, Hashable {
         processName: String? = nil,
         sites: Sites = Sites(services: [], pages: []),
         watch: WatchConfig = WatchConfig(),
-        extensions: Extensions? = nil,
-        cloudflare: CloudflareConfig? = nil,
-        ssh: SshConfig? = nil
+        extensions: Extensions? = nil
     ) {
         // Validate proxy port
         precondition(proxyPort > 0 && proxyPort < 65536, "Proxy port must be in range 1-65535, got \(proxyPort)")
@@ -214,14 +187,7 @@ public struct ArcConfiguration: Codable, Sendable, Hashable {
         self.sites = sites
         self.watch = watch
 
-        // Handle both new and deprecated APIs
-        if let extensions = extensions {
-            self.extensions = extensions
-        } else if cloudflare != nil || ssh != nil {
-            self.extensions = Extensions(cloudflare: cloudflare, ssh: ssh)
-        } else {
-            self.extensions = nil
-        }
+        self.extensions = extensions
     }
 }
 

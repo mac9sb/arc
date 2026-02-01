@@ -131,9 +131,9 @@ struct ArcManifestTests {
             """
 
         let config = try loadManifestFromString(manifestContent)
-        #expect(config.cloudflare != nil)
-        #expect(config.cloudflare?.tunnelName == "test-tunnel")
-        #expect(config.cloudflare?.tunnelUUID == "12345678-1234-1234-1234-123456789abc")
+        #expect(config.extensions?.cloudflare != nil)
+        #expect(config.extensions?.cloudflare?.tunnelName == "test-tunnel")
+        #expect(config.extensions?.cloudflare?.tunnelUUID == "12345678-1234-1234-1234-123456789abc")
     }
 
     @Test("Load manifest with SSH configuration")
@@ -152,9 +152,9 @@ struct ArcManifestTests {
             """
 
         let config = try loadManifestFromString(manifestContent)
-        #expect(config.ssh != nil)
-        #expect(config.ssh?.domain == "ssh.example.com")
-        #expect(config.ssh?.port == 22)
+        #expect(config.extensions?.ssh != nil)
+        #expect(config.extensions?.ssh?.domain == "ssh.example.com")
+        #expect(config.extensions?.ssh?.port == 22)
     }
 
     // MARK: - Validation Tests

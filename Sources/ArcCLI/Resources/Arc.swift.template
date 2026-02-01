@@ -2,35 +2,29 @@ import ArcDescription
 
 let config = ArcConfiguration(
     processName: "example-arc",
-    sites: .sites(
+    sites: .init(
         services: [
-            .service(
+            .init(
                 name: "example-api",
                 domain: "example-api.localhost",
                 port: 8000,
-                process: .process(
+                process: .init(
                     workingDir: "apps/example-api",
                     executable: ".build/release/ExampleAPI"
                 )
             )
         ],
         pages: [
-            .page(
+            .init(
                 name: "example-site",
                 domain: "example-site.localhost",
                 outputPath: "static/example-site/.output"
             )
         ]
     ),
-    watch: .watch(),
-    extensions: .extensions(
-        cloudflare: .cloudflare(
-            enabled: false,
-            tunnelName: nil
-        ),
-        ssh: .ssh(
-            enabled: false,
-            domain: nil
-        )
+    watch: .init(),
+    extensions: .init(
+        cloudflare: nil,
+        ssh: nil
     )
 )
