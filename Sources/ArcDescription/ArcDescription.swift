@@ -136,10 +136,6 @@ public struct ArcConfiguration: Codable, Sendable, Hashable {
     /// - ``WatchConfig``
     public var watch: WatchConfig
 
-
-
-
-
     public init(
         proxyPort: Int = 8080,
         logDir: String = "~/Library/Logs/arc",
